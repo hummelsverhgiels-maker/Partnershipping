@@ -1,0 +1,37 @@
+name: Сборка iPhone (IPA без подписи)
+
+# Запускается только вручную (macOS-минуты на GitHub дорогие):
+# вкладка Actions -> эта сборка -> Run workflow.
+# Результат: неподписанный файл .ipa в Artifacts. Подпись добавим позже.
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.9"
+          channel: stable
+          cache: true
+
+      - name: Скачать пакеты
+        run: flutter pub get
+
+      - name: Собрать iOS без подписи
+        run: flutter build ios --release --no-codesign
+
+      - name: Упаковать в IPA
+        run: |
+          mkdir -p Payload
+          cp -R build/ios/iphoneos/Runner.app Payload/Runner.app
+          zip -qr partnershipping-unsigned.ipa Payload
+
+      - name: Сохранить IPA в Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-unsigned-ipa
+          path: partnershipping-unsigned.ipa
