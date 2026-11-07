@@ -1,0 +1,305 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../data/backend.dart';
+import '../data/store.dart';
+import '../models.dart';
+import 'common.dart';
+import 'theme.dart';
+
+/// Первый запуск: имя и цвет, затем создать пару или войти по коду.
+class OnboardingScreen extends StatefulWidget {
+  final AppStore store;
+  const OnboardingScreen({super.key, required this.store});
+
+  @override
+  State<OnboardingScreen> createState() => _OnboardingScreenState();
+}
+
+class _OnboardingScreenState extends State<OnboardingScreen> {
+  final _name = TextEditingController();
+  final _code = TextEditingController();
+  int _color = kMemberColors[1];
+  int _step = 0; // 0 имя, 1 выбор, 2 вход по коду
+  bool _busy = false;
+  String? _error;
+  ({String pairId, List<Member> members})? _found;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _code.dispose();
+    super.dispose();
+  }
+
+  Future<void> _run(Future<void> Function() job) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await job();
+    } catch (e) {
+      if (mounted) setState(() => _error = Backend.explain(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _create() => _run(() async {
+        await widget.store.createPair(_name.text.trim(), _color);
+        if (!mounted) return;
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Пара создана!'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Отправьте этот код партнёру. Он вводит его на своём телефоне.',
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                Text(widget.store.session!.code,
+                    style: const TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 6)),
+                const SizedBox(height: 8),
+                const Text('Код всегда можно посмотреть в «Настройках».',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: kInkSoft)),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Clipboard.setData(
+                    ClipboardData(text: widget.store.session!.code)),
+                child: const Text('Скопировать'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Дальше'),
+              ),
+            ],
+          ),
+        );
+      });
+
+  Future<void> _find() => _run(() async {
+        final code = _code.text.trim().toUpperCase();
+        if (code.length < 4) throw 'Введите код целиком';
+        final r = await Backend.findPair(code);
+        if (r == null) throw 'pair_not_found';
+        setState(() => _found = r);
+      });
+
+  Future<void> _join() => _run(() async {
+        await widget.store
+            .joinPair(_code.text.trim().toUpperCase(), _name.text.trim(), _color);
+      });
+
+  Future<void> _claim(Member m) => _run(() async {
+        await widget.store.claimMember(_code.text.trim().toUpperCase(), m);
+      });
+
+  Future<void> _local() => _run(() async {
+        await widget.store.startLocal(_name.text.trim(), _color);
+      });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            const SizedBox(height: 16),
+            const Center(child: Text('💞', style: TextStyle(fontSize: 64))),
+            const SizedBox(height: 8),
+            const Center(
+              child: Text('Мы вдвоём',
+                  style: TextStyle(
+                      fontSize: 30, fontWeight: FontWeight.w800, color: kInk)),
+            ),
+            const SizedBox(height: 4),
+            const Center(
+              child: Text('Смены, выходные, зарплата, дела и покупки',
+                  style: TextStyle(color: kInkSoft)),
+            ),
+            const SizedBox(height: 28),
+            if (_step == 0) ..._nameStep(),
+            if (_step == 1) ..._chooseStep(),
+            if (_step == 2) ..._codeStep(),
+            if (_error != null) ...[
+              const SizedBox(height: 16),
+              SoftCard(
+                color: const Color(0xFFFFE3E0),
+                child: Text(_error!, style: const TextStyle(color: kInk)),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _nameStep() => [
+        SoftCard(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Как вас зовут?',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _name,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(hintText: 'Ваше имя'),
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 20),
+              const Text('Ваш цвет в календаре',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 12),
+              ColorPicker(
+                  selected: _color,
+                  onChanged: (c) => setState(() => _color = c)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        FilledButton(
+          onPressed:
+              _name.text.trim().isEmpty ? null : () => setState(() => _step = 1),
+          child: const Text('Дальше'),
+        ),
+      ];
+
+  List<Widget> _chooseStep() => [
+        if (!Backend.configured)
+          const SoftCard(
+            color: Color(0xFFFFF1D6),
+            child: Text(
+                'Сервер синхронизации ещё не подключён, поэтому пару создать нельзя. '
+                'Пока можно пользоваться приложением только на этом телефоне.'),
+          ),
+        const SizedBox(height: 12),
+        if (Backend.configured) ...[
+          FilledButton.icon(
+            onPressed: _busy ? null : _create,
+            icon: const Icon(Icons.favorite_outline),
+            label: const Text('Создать пару'),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _busy ? null : () => setState(() => _step = 2),
+            icon: const Icon(Icons.vpn_key_outlined),
+            label: const Text('У меня есть код'),
+          ),
+        ] else
+          FilledButton(
+            onPressed: _busy ? null : _local,
+            child: const Text('Пользоваться без пары'),
+          ),
+        const SizedBox(height: 12),
+        TextButton(
+          onPressed: _busy ? null : () => setState(() => _step = 0),
+          child: const Text('Назад'),
+        ),
+        if (_busy) const Center(child: CircularProgressIndicator()),
+        if (Backend.configured) ...[
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: _busy ? null : _local,
+            child: const Text('Пока без пары, только на этом телефоне'),
+          ),
+        ],
+      ];
+
+  List<Widget> _codeStep() => [
+        SoftCard(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Код пары',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 4),
+              const Text(
+                  'Введите код, который показан в приложении у партнёра. '
+                  'Также так можно вернуться в пару после переустановки.',
+                  style: TextStyle(color: kInkSoft)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _code,
+                textCapitalization: TextCapitalization.characters,
+                maxLength: 8,
+                style: const TextStyle(
+                    fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: 5),
+                textAlign: TextAlign.center,
+                decoration: const InputDecoration(counterText: '', hintText: 'КОД'),
+                onChanged: (_) => setState(() => _found = null),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        if (_found == null)
+          FilledButton(
+            onPressed: _busy ? null : _find,
+            child: _busy
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2.5, color: Colors.white))
+                : const Text('Найти пару'),
+          )
+        else ..._foundList(),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: _busy ? null : () => setState(() => _step = 1),
+          child: const Text('Назад'),
+        ),
+      ];
+
+  List<Widget> _foundList() {
+    final f = _found!;
+    final canJoin = f.members.length < 2;
+    return [
+      const SectionTitle('Это вы уже были в паре?'),
+      for (final m in f.members) ...[
+        SoftCard(
+          onTap: _busy ? null : () => _claim(m),
+          child: Row(
+            children: [
+              ColorDot(m.color, size: 28),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text('Я — ${m.name}',
+                    style: const TextStyle(
+                        fontSize: 17, fontWeight: FontWeight.w700)),
+              ),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+      ],
+      if (canJoin) ...[
+        const SizedBox(height: 6),
+        FilledButton(
+          onPressed: _busy ? null : _join,
+          child: Text('Я новый участник: ${_name.text.trim()}'),
+        ),
+      ] else
+        const Padding(
+          padding: EdgeInsets.only(top: 6),
+          child: Text('В паре уже двое — выберите, кто вы.',
+              style: TextStyle(color: kInkSoft)),
+        ),
+    ];
+  }
+}

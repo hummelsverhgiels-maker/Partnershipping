@@ -1,83 +1,115 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 
-void main() {
-  runApp(const PartnershippingApp());
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/date_symbol_data_local.dart';
+
+import 'data/backend.dart';
+import 'data/store.dart';
+import 'services/notifier.dart';
+import 'services/widget_service.dart';
+import 'ui/home_shell.dart';
+import 'ui/onboarding.dart';
+import 'ui/theme.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('ru');
+  try {
+    await Backend.init();
+  } catch (e) {
+    debugPrint('Supabase не запущен: $e');
+  }
+  try {
+    await Notifier.init();
+  } catch (e) {
+    debugPrint('Уведомления не запущены: $e');
+  }
+  final store = AppStore();
+  await store.init();
+  runApp(PartnershippingApp(store: store));
 }
 
-class PartnershippingApp extends StatelessWidget {
-  const PartnershippingApp({super.key});
+class PartnershippingApp extends StatefulWidget {
+  final AppStore store;
+  const PartnershippingApp({super.key, required this.store});
+
+  @override
+  State<PartnershippingApp> createState() => _PartnershippingAppState();
+}
+
+class _PartnershippingAppState extends State<PartnershippingApp>
+    with WidgetsBindingObserver {
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    widget.store.addListener(_onChanged);
+    widget.store.onPartnerChange = (who, cats) {
+      if (widget.store.getFlag('notif_partner')) {
+        Notifier.showPartnerChange(who, cats);
+      }
+    };
+    if (widget.store.hasSession) {
+      Notifier.requestPermission();
+      _onChanged();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    widget.store.removeListener(_onChanged);
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      widget.store.refresh();
+      _onChanged();
+    }
+  }
+
+  /// После любых изменений: обновить виджет и напоминания о выплатах.
+  void _onChanged() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(seconds: 1), () {
+      if (!widget.store.hasSession) return;
+      WidgetService.update(widget.store);
+      Notifier.reschedulePay(widget.store);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Мы вдвоём',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFF2A88F), // тёплая пастель
-          brightness: Brightness.light,
-        ),
-        scaffoldBackgroundColor: const Color(0xFFFFF8F3),
-      ),
-      home: const HomeScreen(),
-    );
-  }
-}
-
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  int _taps = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Card(
-              elevation: 0,
-              color: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(28),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('💞', style: TextStyle(fontSize: 64)),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Мы вдвоём',
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Приложение установлено и работает!',
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 24),
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(220, 56),
-                      ),
-                      onPressed: () => setState(() => _taps++),
-                      child: Text('Проверка: нажато $_taps'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
+      theme: buildTheme(),
+      locale: const Locale('ru'),
+      supportedLocales: const [Locale('ru')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      home: ListenableBuilder(
+        listenable: widget.store,
+        builder: (context, _) {
+          if (!widget.store.loaded) {
+            return const Scaffold(
+                body: Center(child: CircularProgressIndicator()));
+          }
+          if (!widget.store.hasSession) {
+            return OnboardingScreen(store: widget.store);
+          }
+          // Первый вход: сразу просим разрешение на уведомления.
+          return HomeShell(store: widget.store);
+        },
       ),
     );
   }

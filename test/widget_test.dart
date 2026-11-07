@@ -1,13 +1,35 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:partnershipping/data/store.dart';
 import 'package:partnershipping/main.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() {
-  testWidgets('Главный экран открывается и кнопка считает нажатия',
-      (tester) async {
-    await tester.pumpWidget(const PartnershippingApp());
-    expect(find.text('Мы вдвоём'), findsOneWidget);
-    await tester.tap(find.text('Проверка: нажато 0'));
+  testWidgets('Первый запуск показывает экран знакомства', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await initializeDateFormatting('ru');
+    final store = AppStore();
+    await store.init();
+    await tester.pumpWidget(PartnershippingApp(store: store));
     await tester.pump();
-    expect(find.text('Проверка: нажато 1'), findsOneWidget);
+    expect(find.text('Мы вдвоём'), findsOneWidget);
+    expect(find.text('Как вас зовут?'), findsOneWidget);
+  });
+
+  testWidgets('Без пары: вход, календарь, смена', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await initializeDateFormatting('ru');
+    final store = AppStore();
+    await store.init();
+    await store.startLocal('Саша', 0xFFFBC9A0);
+    await tester.pumpWidget(PartnershippingApp(store: store));
+    await tester.pump();
+    expect(find.text('Календарь'), findsWidgets);
+    final now = DateTime.now();
+    store.setShift(store.session!.memberId, [DateTime(now.year, now.month, 15)],
+        '09:00', '21:00');
+    await tester.pump();
+    expect(find.text('9–21'), findsOneWidget);
+    expect(store.schedule.shiftOf(store.session!.memberId, DateTime(now.year, now.month, 15))!.end, '21:00');
   });
 }
