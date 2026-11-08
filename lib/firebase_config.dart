@@ -8,9 +8,11 @@ const String kFbAppId = '1:922303308650:web:b1255ee10b893cb4fbbb13';
 const String kFbMessagingSenderId = '922303308650';
 const String kFbProjectId = 'project-8025729468275159558';
 const String kFbAuthDomain = 'project-8025729468275159558.firebaseapp.com';
-const String kFbStorageBucket = 'project-8025729468275159558.firebasestorage.app';
+const String kFbStorageBucket =
+    'project-8025729468275159558.firebasestorage.app';
 // Публичный ключ веб-уведомлений (Cloud Messaging → Web Push certificates)
-const String kFbVapidKey = '';
+const String kFbVapidKey =
+    'BH5UANqBRdDzJwcJqfRTCLA9T-i3ZcHQtUtnHYeFRjiZmn13fH9ukUIjab_tZOWHDiFaM3PoO2upliaoZ0fbPLA';
 
 bool get webPushConfigured =>
     kFbApiKey.isNotEmpty &&
