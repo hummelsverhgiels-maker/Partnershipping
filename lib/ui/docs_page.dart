@@ -90,7 +90,7 @@ class _DocsPageState extends State<DocsPage> {
         if (mounted) toast(context, 'Не удалось открыть ссылку');
       }
     } else if (d.s('path') != null) {
-      await openFileExternally(context, d.s('path')!);
+      await openFileExternally(context, d.s('path')!, name: d.s('name'));
     }
   }
 

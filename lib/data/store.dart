@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../logic/dog.dart';
 import '../logic/schedule.dart';
 import '../models.dart';
 import '../util.dart';
@@ -71,6 +72,14 @@ class AppStore extends ChangeNotifier {
   Map<String, int> seenTs = {}; // memberId -> до какого сообщения прочитан чат
   Map<String, Rec> kisses = {}; // memberId -> счётчик поцелуев
   Map<String, Rec> avatars = {}; // memberId -> аватарка
+
+  // собака
+  Rec? dog; // паспорт собаки
+  Map<String, Map<String, Rec>> dogDone = {}; // дата -> пункт -> отметка
+  Map<String, Rec> dogPlans = {}; // «дата|окно» -> кто гуляет
+  List<Rec> dogCare = []; // прививки, обработки, груминг
+  List<Rec> dogWeights = []; // вес по датам
+  List<Rec> dogSupplies = []; // корм и прочие запасы
 
   bool get hasSession => session != null;
   bool get isLocal => session?.local ?? true;
@@ -243,13 +252,17 @@ class AppStore extends ChangeNotifier {
     _recSub = Backend.recordsStream(s.pairId).listen((rows) {
       final was = online;
       online = true;
+      _noteServerTime(rows);
       _applyRecords(rows);
       if (!was) notifyListeners();
     }, onError: (_) => _scheduleRetry());
     _memSub = Backend.membersStream(
       s.pairId,
     ).listen((rows) => _applyMembers(rows), onError: (_) => _scheduleRetry());
-    _timer ??= Timer.periodic(const Duration(seconds: 30), (_) => refresh());
+    _timer ??= Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => refresh(incremental: true),
+    );
     await refresh();
   }
 
@@ -265,22 +278,45 @@ class AppStore extends ChangeNotifier {
 
   int _failStreak = 0;
 
-  /// Принудительно сверить всё с сервером (и отправить накопленное).
-  Future<void> refresh() async {
+  /// Самое позднее время изменения, которое мы видели на сервере.
+  DateTime? _serverMax;
+  int _polls = 0;
+
+  void _noteServerTime(List<Map<String, dynamic>> rows) {
+    for (final r in rows) {
+      final t = DateTime.tryParse(r['updated_at']?.toString() ?? '');
+      if (t != null && (_serverMax == null || t.isAfter(_serverMax!))) {
+        _serverMax = t;
+      }
+    }
+  }
+
+  /// Сверить данные с сервером (и отправить накопленное).
+  /// [incremental] — забрать только изменения за последние минуты: так
+  /// фоновые проверки раз в 30 секунд почти не тратят интернет. Раз в
+  /// 5 минут всё равно делаем полную сверку (видим и удаления).
+  Future<void> refresh({bool incremental = false}) async {
     final s = session;
     if (s == null || s.local || !Backend.configured) return;
+    final full = !incremental || _serverMax == null || _polls++ % 10 == 9;
     try {
       await Backend.ensureSignedIn();
       await flush();
-      final rows = await Backend.fetchRecords(s.pairId);
-      final mem = await Backend.fetchMembers(s.pairId);
+      final rows = full
+          ? await Backend.fetchRecords(s.pairId)
+          : await Backend.fetchRecordsSince(
+              s.pairId,
+              _serverMax!.subtract(const Duration(minutes: 2)),
+            );
+      final mem = full ? await Backend.fetchMembers(s.pairId) : null;
       final statusChanged = !online || lastError != null;
       online = true;
       lastError = null;
       lastErrorRaw = null;
       _failStreak = 0;
-      _applyMembers(mem);
-      _applyRecords(rows);
+      if (mem != null) _applyMembers(mem);
+      _noteServerTime(rows);
+      _applyRecords(rows, partial: !full);
       if (statusChanged) notifyListeners();
     } catch (e) {
       final raw = e.toString();
@@ -317,13 +353,13 @@ class AppStore extends ChangeNotifier {
           n++;
         }
         final batch = _outbox.sublist(0, n);
+        // Одна запись могла поменяться несколько раз (например, без сети):
+        // отправляем только последнюю версию, иначе сервер отклонит пачку.
         if (first.isDelete) {
-          await Backend.deleteRecords(batch.map((o) => o.id).toList());
+          await Backend.deleteRecords(batch.map((o) => o.id).toSet().toList());
         } else {
-          await Backend.upsertRecords(
-            s.pairId,
-            batch.map((o) => o.rec!).toList(),
-          );
+          final last = <String, Rec>{for (final o in batch) o.id: o.rec!};
+          await Backend.upsertRecords(s.pairId, last.values.toList());
         }
         _outbox.removeRange(0, n);
         final now = DateTime.now();
@@ -358,8 +394,9 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _applyRecords(List<Map<String, dynamic>> rows) {
-    final next = <String, Rec>{};
+  void _applyRecords(List<Map<String, dynamic>> rows, {bool partial = false}) {
+    // partial: пришли только изменённые записи — накладываем их на текущие.
+    final next = partial ? Map<String, Rec>.of(_recs) : <String, Rec>{};
     for (final r in rows) {
       try {
         final rec = Rec.fromJson(r);
@@ -412,7 +449,7 @@ class AppStore extends ChangeNotifier {
     final oldKisses = partnerId == null ? 0 : kissTotalOf(partnerId);
     _recs = next;
     _rebuild();
-    _saveRecs();
+    _saveRecsSoon();
     if (partnerId != null) {
       final delta = kissTotalOf(partnerId) - oldKisses;
       if (delta > 0 && !firstSync) {
@@ -466,6 +503,8 @@ class AppStore extends ChangeNotifier {
         return 'docs';
       case 'event':
         return 'event';
+      case 'dogdone':
+        return 'dog';
     }
     return null;
   }
@@ -858,10 +897,204 @@ class AppStore extends ChangeNotifier {
 
   void _afterLocalChange() {
     _rebuild();
-    _saveRecs();
+    _saveRecsSoon();
     _saveOutbox();
     notifyListeners();
     flush();
+  }
+
+  // ----------------------------------------------------------- собака
+  String get dogName {
+    final n = dog?.s('name')?.trim() ?? '';
+    return n.isEmpty ? 'Собака' : n;
+  }
+
+  String get dogEmoji {
+    final e = dog?.s('emoji') ?? '';
+    return e.isEmpty ? '🐶' : e;
+  }
+
+  int get dogWalks => (dog?.i('walks') ?? 2).clamp(2, 3);
+  int get dogMeals => (dog?.i('meals') ?? 2).clamp(1, 3);
+
+  /// Сколько часов собаке нормально побыть одной.
+  int get dogAloneMax => (dog?.i('aloneMax') ?? 8).clamp(2, 16);
+
+  /// Дорога до работы (минут в одну сторону).
+  int get dogCommute => (dog?.i('commute') ?? 30).clamp(0, 180);
+
+  List<DogItem> get dogTodayItems => dogItems(walks: dogWalks, meals: dogMeals);
+
+  void saveDog(Map<String, dynamic> data) {
+    upsert('dog', {...?dog?.data, ...data}, id: dog?.id);
+  }
+
+  Rec? dogDoneOf(DateTime day, String item) => dogDone[ymd(day)]?[item];
+
+  /// Отметить пункт (или снять отметку).
+  void toggleDogDone(String item, {DateTime? day}) {
+    final d = ymd(day ?? DateTime.now());
+    final same = _recs.values
+        .where(
+          (r) => r.kind == 'dogdone' && r.s('date') == d && r.s('item') == item,
+        )
+        .map((r) => r.id)
+        .toList();
+    if (same.isNotEmpty) {
+      for (final id in same) {
+        if (_recs.remove(id) != null) _outbox.add(_Op.delete(id));
+      }
+      _afterLocalChange();
+      return;
+    }
+    final it = dogItemById(item);
+    // старые отметки (старше 60 дней) убираем, чтобы данные не разрастались
+    final cutoff = ymd(addDays(DateTime.now(), -60));
+    final old = _recs.values
+        .where(
+          (r) =>
+              r.kind == 'dogdone' && (r.s('date') ?? '').compareTo(cutoff) < 0,
+        )
+        .take(40)
+        .map((r) => r.id)
+        .toList();
+    for (final id in old) {
+      if (_recs.remove(id) != null) _outbox.add(_Op.delete(id));
+    }
+    upsert('dogdone', {
+      'date': d,
+      'item': item,
+      'label': it?.title ?? item,
+      'emoji': it?.emoji ?? '🐶',
+      'by': session?.memberId,
+      'ts': DateTime.now().millisecondsSinceEpoch,
+    });
+  }
+
+  /// Дни, когда были отмечены все прогулки.
+  Set<String> get dogDaysAllWalked {
+    final walks = dogTodayItems.where((i) => i.walk).map((i) => i.id).toList();
+    return {
+      for (final e in dogDone.entries)
+        if (walks.every(e.value.containsKey)) e.key,
+    };
+  }
+
+  /// Сколько прогулок за последние 7 дней у каждого.
+  Map<String, int> dogWalksByMember({DateTime? today}) {
+    final t = dateOnly(today ?? DateTime.now());
+    final from = ymd(addDays(t, -6));
+    final to = ymd(t);
+    final out = <String, int>{};
+    for (final e in dogDone.entries) {
+      if (e.key.compareTo(from) < 0 || e.key.compareTo(to) > 0) continue;
+      for (final r in e.value.values) {
+        if (dogItemById(r.s('item') ?? '')?.walk != true) continue;
+        final by = r.s('by');
+        if (by != null) out[by] = (out[by] ?? 0) + 1;
+      }
+    }
+    return out;
+  }
+
+  /// Кто гуляет в это окно (если договорились заранее).
+  String? dogPlanOf(DateTime day, String slot) =>
+      dogPlans['${ymd(day)}|$slot']?.s('memberId');
+
+  void setDogPlan(DateTime day, String slot, String? memberId) {
+    final key = '${ymd(day)}|$slot';
+    final ex = dogPlans[key];
+    if (memberId == null) {
+      if (ex != null) remove(ex.id);
+      return;
+    }
+    upsert('dogplan', {
+      'date': ymd(day),
+      'slot': slot,
+      'memberId': memberId,
+    }, id: ex?.id);
+  }
+
+  void markCareDone(Rec r, {DateTime? on}) {
+    final d = ymd(on ?? DateTime.now());
+    final hist = <String>[
+      ...((r.data['history'] as List?) ?? const []).map((e) => '$e'),
+    ];
+    if (!hist.contains(d)) hist.add(d);
+    hist.sort();
+    final keep = hist.length > 12 ? hist.sublist(hist.length - 12) : hist;
+    upsert('dogcare', {
+      ...r.data,
+      'last': keep.last,
+      'history': keep,
+      'by': session?.memberId,
+    }, id: r.id);
+  }
+
+  void addDogWeight(double kg, DateTime day) {
+    final d = ymd(day);
+    Rec? ex;
+    for (final r in dogWeights) {
+      if (r.s('date') == d) ex = r;
+    }
+    upsert('dogweight', {'date': d, 'kg': kg}, id: ex?.id);
+  }
+
+  double? get dogWeightNow =>
+      dogWeights.isEmpty ? null : dogWeights.last.d('kg');
+
+  void markSupplyBought(Rec r, {DateTime? on}) {
+    upsert('dogsupply', {
+      ...r.data,
+      'bought': ymd(on ?? DateTime.now()),
+    }, id: r.id);
+  }
+
+  /// Положить запас в общий список покупок (если его там ещё нет).
+  bool supplyToShopping(Rec r) {
+    final title = '${r.s('emoji') ?? '🐶'} ${r.s('title') ?? 'Для собаки'}';
+    final exists = shopping.any(
+      (x) => !x.b('bought') && (x.s('title') ?? '').trim() == title.trim(),
+    );
+    if (exists) return false;
+    upsert('shopping', {'title': title, 'bought': false});
+    return true;
+  }
+
+  /// Запасы, которые скоро закончатся (осталось ≤ 3 дней).
+  List<Rec> dogSuppliesLow({DateTime? today}) {
+    final t = dateOnly(today ?? DateTime.now());
+    return [
+      for (final r in dogSupplies)
+        if (r.s('bought') != null &&
+            supplyLeft(r.s('bought')!, r.i('lasts') ?? 30, t) <= 3)
+          r,
+    ];
+  }
+
+  /// Процедуры, которые пора сделать (срок через ≤ 3 дня или прошёл).
+  List<Rec> dogCareDue({DateTime? today}) {
+    final t = dateOnly(today ?? DateTime.now());
+    return [
+      for (final r in dogCare)
+        if (careNext(r.s('last'), r.i('every') ?? 0) case final n?)
+          if (daysBetween(t, n) <= 3) r,
+    ];
+  }
+
+  /// Текст для уведомления о последней отметке партнёра.
+  String? get lastPartnerDogLine {
+    final p = partner;
+    if (p == null) return null;
+    Rec? best;
+    for (final byItem in dogDone.values) {
+      for (final r in byItem.values) {
+        if (r.s('by') != p.id) continue;
+        if (best == null || (r.i('ts') ?? 0) > (best.i('ts') ?? 0)) best = r;
+      }
+    }
+    if (best == null) return null;
+    return '${best.s('emoji') ?? '🐶'} ${best.s('label') ?? 'Отметка'} — готово';
   }
 
   // ----------------------------------------------- профиль и шаблоны
@@ -1075,6 +1308,12 @@ class AppStore extends ChangeNotifier {
     final se = <String, int>{};
     final ki = <String, Rec>{};
     final av = <String, Rec>{};
+    Rec? dg;
+    final dd = <String, Map<String, Rec>>{};
+    final dp = <String, Rec>{};
+    final dcare = <Rec>[];
+    final dw = <Rec>[];
+    final ds = <Rec>[];
     for (final r in _recs.values) {
       switch (r.kind) {
         case 'shift':
@@ -1145,8 +1384,40 @@ class AppStore extends ChangeNotifier {
         case 'seen':
           final mid = r.s('memberId');
           if (mid != null) se[mid] = r.i('ts') ?? 0;
+        case 'dog':
+          // если паспорт вдруг создали оба сразу — берём один и тот же на обоих телефонах
+          if (dg == null || r.id.compareTo(dg.id) < 0) dg = r;
+        case 'dogdone':
+          final d = r.s('date');
+          final it = r.s('item');
+          if (d != null && it != null) {
+            final byItem = dd[d] ??= {};
+            final old = byItem[it];
+            if (old == null || (r.i('ts') ?? 0) < (old.i('ts') ?? 0)) {
+              byItem[it] = r;
+            }
+          }
+        case 'dogplan':
+          final d = r.s('date');
+          final sl = r.s('slot');
+          if (d != null && sl != null) dp['$d|$sl'] = r;
+        case 'dogcare':
+          dcare.add(r);
+        case 'dogweight':
+          if (r.s('date') != null && r.d('kg') != null) dw.add(r);
+        case 'dogsupply':
+          ds.add(r);
       }
     }
+    dcare.sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
+    dw.sort((a, b) => (a.s('date') ?? '').compareTo(b.s('date') ?? ''));
+    ds.sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
+    dog = dg;
+    dogDone = dd;
+    dogPlans = dp;
+    dogCare = dcare;
+    dogWeights = dw;
+    dogSupplies = ds;
     // Если смена и «выходной» вдруг оба есть (две правки одновременно) — побеждает смена.
     schedule = Schedule(
       shifts: shifts,
@@ -1207,6 +1478,33 @@ class AppStore extends ChangeNotifier {
     await _saveOutbox();
   }
 
+  /// Задержка перед сохранением записей на телефон (в тестах — 0).
+  static Duration saveDelay = const Duration(milliseconds: 1500);
+  Timer? _saveTimer;
+
+  /// Записей бывает много: при частых нажатиях (поцелуйчики, галочки)
+  /// сохраняем не каждое изменение, а одно — через полторы секунды.
+  void _saveRecsSoon() {
+    _saveTimer?.cancel();
+    if (saveDelay == Duration.zero) {
+      _saveRecs();
+      return;
+    }
+    _saveTimer = Timer(saveDelay, () {
+      _saveTimer = null;
+      _saveRecs();
+    });
+  }
+
+  /// Сохранить отложенное прямо сейчас (приложение сворачивают).
+  Future<void> persistNow() async {
+    final t = _saveTimer;
+    if (t == null) return;
+    t.cancel();
+    _saveTimer = null;
+    await _saveRecs();
+  }
+
   Future<void> _saveRecs() async => _prefs?.setString(
     'recs',
     jsonEncode(_recs.values.map((r) => r.toJson()).toList()),
@@ -1220,6 +1518,10 @@ class AppStore extends ChangeNotifier {
   @override
   void dispose() {
     _disconnect();
+    if (_saveTimer != null) {
+      _saveTimer!.cancel();
+      _saveRecs();
+    }
     super.dispose();
   }
 }

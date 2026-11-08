@@ -3,14 +3,15 @@ import 'package:file_picker/file_picker.dart';
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
 import '../data/backend.dart';
+import '../data/transfer.dart';
 import '../models.dart';
 import '../util.dart';
+import 'playable.dart';
 
 /// Файл, выбранный или записанный пользователем (ещё не загруженный).
 class PickedMedia {
@@ -186,26 +187,41 @@ class MediaService {
     return f;
   }
 
+  /// Скачать файл целиком без хранения в памяти (видео, голосовые, документы).
+  static Future<Uint8List> fetch(String path) => _download(path);
+
   static Future<Uint8List> _download(String path) async {
-    final url = await Backend.signedUrl(path);
-    final candidates = <String>[url, ?Backend.alternate(url)];
-    Object? lastError;
-    for (final u in candidates) {
-      for (var attempt = 0; attempt < 2; attempt++) {
-        try {
-          final r = await http
-              .get(Uri.parse(u))
-              .timeout(const Duration(seconds: 45));
-          if (r.statusCode == 200) return r.bodyBytes;
-          throw 'Сервер вернул код ${r.statusCode} (${r.reasonPhrase ?? ''})';
-        } catch (e) {
-          lastError = e;
-          if (e is String) rethrow; // отказ сервера: повторять незачем
-          await Future<void>.delayed(const Duration(milliseconds: 400));
-        }
-      }
+    await Transfer.load();
+    final ch = Transfer.parseChunked(path);
+    if (ch != null) return Transfer.downloadChunked(ch.$1, ch.$2);
+    final u = await url(path);
+    // Сеть уже показала, что рвёт крупные ответы: сразу кусочками.
+    if (Transfer.preferChunks) return Transfer.downloadRanged(u);
+    try {
+      return await Transfer.fetchWhole(u);
+    } catch (e) {
+      if (e is String) rethrow; // отказ сервера: кусками тоже не выйдет
+      final b = await Transfer.downloadRanged(u);
+      await Transfer.setPreferChunks(true);
+      return b;
     }
-    throw lastError ?? 'Не удалось скачать файл';
+  }
+
+  /// Настоящий путь в хранилище (без пометки «chunks:N:»).
+  static String realPath(String path) =>
+      Transfer.parseChunked(path)?.$2 ?? path;
+
+  static bool isChunked(String path) => Transfer.parseChunked(path) != null;
+
+  /// Нужно ли сначала скачать файл целиком (а не проигрывать по ссылке).
+  static bool needsLocal(String path) =>
+      isChunked(path) || Transfer.preferChunks;
+
+  /// Скачать и подготовить к проигрыванию: путь к файлу или blob-ссылка.
+  static Future<String> playable(String path) async {
+    final real = realPath(path);
+    final bytes = await fetch(path);
+    return localPlayable(real.split('/').last, bytes, contentTypeFor(real));
   }
 
   /// Android может закрыть приложение, пока открыта камера. Тогда снимок
@@ -240,17 +256,26 @@ class MediaService {
     PairSession s,
     PickedMedia m, {
     String? folder,
+    void Function(double)? onProgress,
   }) async {
     final ext = _ext(m.name);
     final dir = folder == null ? s.pairId : '${s.pairId}/$folder';
     final path = '$dir/${newId()}${ext.isEmpty ? '' : '.$ext'}';
-    await Backend.uploadFile(path, m.bytes, m.contentType);
-    return path;
+    return Backend.uploadFile(
+      path,
+      m.bytes,
+      m.contentType,
+      allowChunks: true,
+      onProgress: onProgress,
+    );
   }
 
   /// Временная ссылка на файл. Одну и ту же ссылку отдаём 50 минут,
   /// чтобы картинки не перезагружались.
   static Future<String> url(String path) {
+    if (isChunked(path)) {
+      return Future.error('Файл передан частями — откройте его в приложении');
+    }
     final c = _urls[path];
     if (c != null &&
         DateTime.now().difference(c.at) < const Duration(minutes: 50)) {

@@ -1,6 +1,6 @@
-import 'dart:typed_data';
-
 import 'package:audioplayers/audioplayers.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
@@ -9,20 +9,58 @@ import '../data/backend.dart';
 import '../data/store.dart';
 import '../models.dart';
 import '../services/media_service.dart';
+import '../services/playable.dart';
 import 'theme.dart';
 
-Future<void> openFileExternally(BuildContext context, String path) async {
+Future<void> openFileExternally(
+  BuildContext context,
+  String path, {
+  String? name,
+}) async {
+  final messenger = ScaffoldMessenger.of(context);
+  // Обычный файл и нормальная сеть: открываем ссылку в браузере/приложении.
+  if (!MediaService.needsLocal(path)) {
+    try {
+      final url = await MediaService.url(path);
+      final ok = await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
+      if (ok) return;
+    } catch (_) {}
+  }
+  // Иначе скачиваем сами (кусочками) и предлагаем сохранить на телефон.
+  messenger.showSnackBar(
+    const SnackBar(
+      content: Text('Скачиваю файл…'),
+      duration: Duration(seconds: 20),
+    ),
+  );
   try {
-    final url = await MediaService.url(path);
-    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-  } catch (e) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+    final real = MediaService.realPath(path);
+    final bytes = await MediaService.fetch(path);
+    final fileName = (name != null && name.trim().isNotEmpty)
+        ? name.trim()
+        : real.split('/').last;
+    final saved = await FilePicker.saveFile(
+      fileName: fileName,
+      bytes: bytes,
+      mimeType: MediaService.contentTypeFor(fileName),
+      dialogTitle: 'Сохранить файл',
+    );
+    messenger.hideCurrentSnackBar();
+    if (saved != null || kIsWeb) {
+      messenger.showSnackBar(
         const SnackBar(
-          content: Text('Не удалось открыть файл. Проверьте интернет.'),
+          content: Text('Файл сохранён — откройте его в «Файлах»'),
         ),
       );
     }
+  } catch (e) {
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(content: Text('Не удалось скачать файл: ${Backend.explain(e)}')),
+    );
   }
 }
 
@@ -46,6 +84,7 @@ class _MediaViewerState extends State<MediaViewer> {
   VideoPlayerController? _video;
   String? _url;
   String? _error;
+  String? _status;
 
   bool get _isVideo => widget.message.s('type') == 'video';
 
@@ -56,31 +95,45 @@ class _MediaViewerState extends State<MediaViewer> {
   }
 
   Future<void> _load() async {
+    final path = widget.message.s('path')!;
     try {
-      final url = await MediaService.url(widget.message.s('path')!);
       if (_isVideo) {
-        var c = VideoPlayerController.networkUrl(Uri.parse(url));
-        try {
-          await c.initialize();
-        } catch (_) {
-          final alt = Backend.alternate(url);
-          if (alt == null) rethrow;
-          await c.dispose();
-          c = VideoPlayerController.networkUrl(Uri.parse(alt));
-          await c.initialize();
-        }
-        c.addListener(() {
+        _video = await _openVideo(path);
+        _video!.addListener(() {
           if (mounted) setState(() {});
         });
-        c.play();
-        _video = c;
+        _video!.play();
       }
-      if (mounted) setState(() => _url = url);
+      if (mounted) setState(() => _url = path);
     } catch (e) {
       if (mounted) {
-        setState(() => _error = 'Не удалось загрузить. Проверьте интернет.');
+        setState(() => _error = 'Не удалось загрузить: ${Backend.explain(e)}');
       }
     }
+  }
+
+  /// Видео: по ссылке (напрямую, потом через посредника), а если сеть
+  /// рвёт поток — скачиваем кусочками и проигрываем с телефона.
+  Future<VideoPlayerController> _openVideo(String path) async {
+    if (!MediaService.needsLocal(path)) {
+      try {
+        final url = await MediaService.url(path);
+        for (final u in <String>[url, ?Backend.alternate(url)]) {
+          final c = VideoPlayerController.networkUrl(Uri.parse(u));
+          try {
+            await c.initialize().timeout(const Duration(seconds: 20));
+            return c;
+          } catch (_) {
+            await c.dispose();
+          }
+        }
+      } catch (_) {}
+    }
+    if (mounted) setState(() => _status = 'Скачиваю видео…');
+    final local = await MediaService.playable(path);
+    final c = videoFromLocal(local);
+    await c.initialize();
+    return c;
   }
 
   @override
@@ -119,7 +172,8 @@ class _MediaViewerState extends State<MediaViewer> {
           IconButton(
             tooltip: 'Открыть или скачать',
             icon: const Icon(Icons.open_in_new),
-            onPressed: () => openFileExternally(context, m.s('path')!),
+            onPressed: () =>
+                openFileExternally(context, m.s('path')!, name: m.s('name')),
           ),
         ],
       ),
@@ -131,7 +185,18 @@ class _MediaViewerState extends State<MediaViewer> {
     if (_error != null) {
       return Text(_error!, style: const TextStyle(color: Colors.white));
     }
-    if (_url == null) return const CircularProgressIndicator();
+    if (_url == null) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(),
+          if (_status != null) ...[
+            const SizedBox(height: 14),
+            Text(_status!, style: const TextStyle(color: Colors.white70)),
+          ],
+        ],
+      );
+    }
     if (_isVideo) {
       final c = _video!;
       return Column(
@@ -249,14 +314,7 @@ class _VoicePlayerState extends State<VoicePlayer> {
       if (_pos > Duration.zero && _dur != null) {
         await _player.resume();
       } else {
-        final url = await MediaService.url(widget.path);
-        try {
-          await _player.play(UrlSource(url));
-        } catch (_) {
-          final alt = Backend.alternate(url);
-          if (alt == null) rethrow;
-          await _player.play(UrlSource(alt));
-        }
+        await _player.play(await _source());
       }
     } catch (e) {
       if (mounted) {
@@ -266,6 +324,17 @@ class _VoicePlayerState extends State<VoicePlayer> {
       }
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// Голосовые маленькие: скачиваем целиком (кусочками, если сеть капризничает)
+  /// и играем с телефона — так надёжнее, чем поток по ссылке.
+  Future<Source> _source() async {
+    try {
+      return audioFromLocal(await MediaService.playable(widget.path));
+    } catch (e) {
+      if (MediaService.isChunked(widget.path)) rethrow;
+      return UrlSource(await MediaService.url(widget.path));
     }
   }
 

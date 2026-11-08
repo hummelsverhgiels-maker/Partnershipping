@@ -13,6 +13,7 @@ import 'avatar_picker.dart';
 import 'theme_controller.dart';
 import '../util.dart';
 import 'common.dart';
+import 'net_check_page.dart';
 import 'theme.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -187,6 +188,20 @@ class SettingsPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   _syncStatus(),
+                  const SizedBox(height: 4),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      key: const ValueKey('net-check'),
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => NetCheckPage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.network_check_rounded),
+                      label: const Text('Проверка связи (фото и файлы)'),
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -393,6 +408,17 @@ class SettingsPage extends StatelessWidget {
                   title: const Text('Когда партнёр что-то изменил'),
                   subtitle: const Text(
                     'Приходит, пока приложение открыто или недавно было открыто',
+                  ),
+                ),
+                SwitchRow(
+                  value: store.getFlag('notif_dog'),
+                  onChanged: (v) async {
+                    await store.setFlag('notif_dog', v);
+                    if (v) await Notifier.requestPermission();
+                  },
+                  title: const Text('Напоминания о собаке'),
+                  subtitle: const Text(
+                    'Вечерняя прогулка в 21:30, прививки, корм заканчивается',
                   ),
                 ),
               ],

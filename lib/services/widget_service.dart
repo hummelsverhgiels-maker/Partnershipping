@@ -23,6 +23,8 @@ class WidgetService {
   static const _iosWidget = 'DaysOffWidget';
 
   static String? _lastUploaded;
+  static String? _lastLocal;
+  static final Map<String, String> _localValues = {};
 
   /// Три строки для зрителя [viewer] на день [day].
   static List<String> lines(
@@ -103,36 +105,42 @@ class WidgetService {
     if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
       try {
         if (Platform.isIOS) await HomeWidget.setAppGroupId(_iosGroup);
+        final values = <String, String>{};
         for (var i = 0; i < 14; i++) {
           final day = addDays(today, i);
           final key = ymd(day);
           final l = lines(store, me, partner, day);
-          await HomeWidget.saveWidgetData<String>('wm_$key', l[0]);
-          await HomeWidget.saveWidgetData<String>('wp_$key', l[1]);
-          await HomeWidget.saveWidgetData<String>('wb_$key', l[2]);
+          values['wm_$key'] = l[0];
+          values['wp_$key'] = l[1];
+          values['wb_$key'] = l[2];
         }
         final now = lines(store, me, partner, today);
-        await HomeWidget.saveWidgetData<String>('wchat', now[3]);
-        await HomeWidget.saveWidgetData<String>('wmood', now[4]);
+        values['wchat'] = now[3];
+        values['wmood'] = now[4];
         // Данные для самостоятельного обновления виджета Android (даже при закрытом приложении)
         if (!store.isLocal && store.session != null) {
-          await HomeWidget.saveWidgetData<String>(
-            'cfg_urls',
-            [
-              kSupabaseUrl,
-              kSupabaseProxyUrl,
-            ].where((u) => u.isNotEmpty).join(','),
-          );
-          await HomeWidget.saveWidgetData<String>('cfg_key', kSupabaseAnonKey);
-          await HomeWidget.saveWidgetData<String>(
-            'cfg_code',
-            store.session!.code,
-          );
-          await HomeWidget.saveWidgetData<String>(
-            'cfg_member',
-            store.session!.memberId,
-          );
+          values['cfg_urls'] = [
+            kSupabaseUrl,
+            kSupabaseProxyUrl,
+          ].where((u) => u.isNotEmpty).join(',');
+          values['cfg_key'] = kSupabaseAnonKey;
+          values['cfg_code'] = store.session!.code;
+          values['cfg_member'] = store.session!.memberId;
         }
+        // Ничего не поменялось — не трогаем виджет (экономим батарею).
+        final sig = jsonEncode(values);
+        if (sig == _lastLocal) {
+          await _uploadCloud(store, me, partner, today);
+          return;
+        }
+        for (final e in values.entries) {
+          if (_localValues[e.key] == e.value) continue;
+          await HomeWidget.saveWidgetData<String>(e.key, e.value);
+        }
+        _localValues
+          ..clear()
+          ..addAll(values);
+        _lastLocal = sig;
         await HomeWidget.updateWidget(
           qualifiedAndroidName: _provider,
           iOSName: _iosWidget,
@@ -142,7 +150,16 @@ class WidgetService {
       }
     }
 
-    // --- облачная копия (для виджета через Scriptable на iPhone)
+    await _uploadCloud(store, me, partner, today);
+  }
+
+  /// Облачная копия (для виджета через Scriptable на iPhone).
+  static Future<void> _uploadCloud(
+    AppStore store,
+    Member me,
+    Member? partner,
+    DateTime today,
+  ) async {
     if (!store.isLocal && Backend.configured && store.online) {
       try {
         final s = store.session!;

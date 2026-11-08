@@ -33,6 +33,7 @@ class _ChatPageState extends State<ChatPage> {
   Rec? _reply; // сообщение, на которое отвечаем
   bool _recording = false;
   bool _uploading = false;
+  double? _progress; // доля отправленного (при отправке частями)
   int _recSeconds = 0;
   Timer? _recTimer;
 
@@ -103,8 +104,17 @@ class _ChatPageState extends State<ChatPage> {
     try {
       final m = await pick();
       if (m == null) return;
-      setState(() => _uploading = true);
-      final path = await MediaService.upload(s.session!, m);
+      setState(() {
+        _uploading = true;
+        _progress = null;
+      });
+      final path = await MediaService.upload(
+        s.session!,
+        m,
+        onProgress: (p) {
+          if (mounted) setState(() => _progress = p);
+        },
+      );
       s.sendMedia(
         type: m.type,
         path: path,
@@ -322,7 +332,7 @@ class _ChatPageState extends State<ChatPage> {
                 title: const Text('Открыть или скачать'),
                 onTap: () {
                   Navigator.pop(ctx);
-                  openFileExternally(context, m.s('path')!);
+                  openFileExternally(context, m.s('path')!, name: m.s('name'));
                 },
               ),
             if (mine)
@@ -567,7 +577,8 @@ class _ChatPageState extends State<ChatPage> {
         );
       case 'file':
         content = GestureDetector(
-          onTap: () => openFileExternally(context, m.s('path')!),
+          onTap: () =>
+              openFileExternally(context, m.s('path')!, name: m.s('name')),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -800,7 +811,11 @@ class _ChatPageState extends State<ChatPage> {
         return SoftCard(
           onTap: isAudio
               ? null
-              : () => openFileExternally(context, m.s('path')!),
+              : () => openFileExternally(
+                  context,
+                  m.s('path')!,
+                  name: m.s('name'),
+                ),
           child: Row(
             children: [
               if (isAudio)
@@ -907,10 +922,13 @@ class _ChatPageState extends State<ChatPage> {
               tooltip: 'Прикрепить',
               onPressed: _uploading ? null : _attachMenu,
               icon: _uploading
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 22,
                       height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        value: _progress,
+                      ),
                     )
                   : const Icon(Icons.attach_file_rounded, size: 28),
             ),

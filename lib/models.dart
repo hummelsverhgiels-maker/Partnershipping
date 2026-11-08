@@ -34,6 +34,7 @@ class Rec {
   String? s(String k) => data[k] as String?;
   bool b(String k) => data[k] == true;
   int? i(String k) => (data[k] as num?)?.toInt();
+  double? d(String k) => (data[k] as num?)?.toDouble();
 
   factory Rec.fromJson(Map<String, dynamic> j) => Rec(
     id: j['id'] as String,

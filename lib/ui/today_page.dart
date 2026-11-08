@@ -8,6 +8,7 @@ import '../util.dart';
 import 'avatar.dart';
 import 'common.dart';
 import 'day_page.dart';
+import 'dog_today.dart';
 import 'earnings_page.dart';
 import 'important_page.dart';
 import 'mood_card.dart';
@@ -184,6 +185,8 @@ class TodayPage extends StatelessWidget {
           ],
           const SectionTitle('НАСТРОЕНИЕ'),
           MoodCard(store: s),
+          const SectionTitle('СОБАКА'),
+          DogTodayCard(store: s),
           const SizedBox(height: 14),
           Row(
             children: [

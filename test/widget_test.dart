@@ -6,6 +6,7 @@ import 'package:partnershipping/main.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() {
+  AppStore.saveDelay = Duration.zero;
   testWidgets('Первый запуск показывает экран знакомства', (tester) async {
     SharedPreferences.setMockInitialValues({});
     await initializeDateFormatting('ru');

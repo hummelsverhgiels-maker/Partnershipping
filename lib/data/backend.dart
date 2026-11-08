@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 
+import 'transfer.dart';
+
 import '../config.dart';
 import '../models.dart';
 import 'probe_io.dart' if (dart.library.js_interop) 'probe_web.dart';
@@ -193,6 +195,19 @@ class Backend {
     return List<Map<String, dynamic>>.from(r);
   }
 
+  /// Только записи, изменённые после [since] (время сервера).
+  static Future<List<Map<String, dynamic>>> fetchRecordsSince(
+    String pairId,
+    DateTime since,
+  ) async {
+    final r = await client
+        .from('records')
+        .select()
+        .eq('pair_id', pairId)
+        .gt('updated_at', since.toUtc().toIso8601String());
+    return List<Map<String, dynamic>>.from(r);
+  }
+
   static Future<List<Map<String, dynamic>>> fetchMembers(String pairId) async {
     final r = await client.from('members').select().eq('pair_id', pairId);
     return List<Map<String, dynamic>>.from(r);
@@ -268,16 +283,11 @@ class Backend {
     return activeUrl == kSupabaseProxyUrl ? kSupabaseUrl : kSupabaseProxyUrl;
   }
 
-  static bool _isNetworkIssue(Object e) =>
-      e is TimeoutException || e is http.ClientException || isNetworkError(e);
+  /// Адреса сервера в порядке попыток.
+  static List<String> get bases => [activeUrl, if (altUrl.isNotEmpty) altUrl];
 
-  /// Загрузка файла. Тяжёлые запросы провайдеры иногда обрывают («Connection reset»),
-  /// поэтому пробуем несколько раз и, если нужно, через запасной адрес.
-  static Future<void> uploadFile(
-    String path,
-    Uint8List bytes,
-    String contentType,
-  ) async {
+  /// Свежий токен входа для прямых запросов к хранилищу.
+  static Future<String> authToken() async {
     var session = client.auth.currentSession;
     if (session == null || session.isExpired) {
       try {
@@ -286,35 +296,74 @@ class Backend {
       } catch (_) {}
       session = client.auth.currentSession;
     }
-    final token = session?.accessToken ?? kSupabaseAnonKey;
-    final bases = <String>[activeUrl, if (altUrl.isNotEmpty) altUrl];
+    return session?.accessToken ?? kSupabaseAnonKey;
+  }
+
+  static bool _isNetworkIssue(Object e) =>
+      e is TimeoutException || e is http.ClientException || isNetworkError(e);
+
+  /// Загрузка файла. Возвращает путь, под которым файл сохранён
+  /// (для загрузки частями — «chunks:N:путь»).
+  ///
+  /// Сначала обычная отправка (напрямую, затем через посредника). Если сеть
+  /// рвёт крупные передачи, отправляем кусками по 12 КБ и запоминаем это.
+  static Future<String> uploadFile(
+    String path,
+    Uint8List bytes,
+    String contentType, {
+    bool allowChunks = false,
+    void Function(double)? onProgress,
+  }) async {
+    await Transfer.load();
+    final canChunk = allowChunks && bytes.length <= Transfer.maxChunkedUpload;
+    if (canChunk && Transfer.preferChunks) {
+      return Transfer.uploadChunked(path, bytes, onProgress: onProgress);
+    }
+    final token = await authToken();
     Object? lastError;
-    for (final base in bases) {
-      for (var attempt = 0; attempt < 2; attempt++) {
-        try {
-          final r = await http
-              .post(
-                Uri.parse('$base/storage/v1/object/chat/$path'),
-                headers: {
-                  'apikey': kSupabaseAnonKey,
-                  'Authorization': 'Bearer $token',
-                  'Content-Type': contentType,
-                  'x-upsert': 'true',
-                  'cache-control': 'max-age=3600',
-                },
-                body: bytes,
-              )
-              .timeout(const Duration(minutes: 4));
-          if (r.statusCode >= 200 && r.statusCode < 300) return;
-          // Сервер ответил отказом: это не сетевой сбой, повторять нет смысла.
-          throw StorageRejected(r.statusCode, r.body);
-        } catch (e) {
-          if (e is StorageRejected) rethrow;
-          if (!_isNetworkIssue(e)) rethrow;
-          lastError = e;
-          await Future<void>.delayed(const Duration(milliseconds: 500));
+    // Обычная отправка одним запросом. Если сеть её оборвала — сразу частями
+    // (части сами пробуют и прямой путь, и запасной).
+    for (final base in canChunk ? [activeUrl] : bases) {
+      try {
+        final r = await Transfer.send(
+          'POST',
+          Uri.parse('$base/storage/v1/object/chat/$path'),
+          headers: {
+            'apikey': kSupabaseAnonKey,
+            'Authorization': 'Bearer $token',
+            'Content-Type': contentType,
+            'x-upsert': 'true',
+            'cache-control': 'max-age=3600',
+          },
+          body: bytes,
+          timeout: Duration(seconds: 20 + bytes.length ~/ 100000),
+        );
+        if (r.statusCode >= 200 && r.statusCode < 300) {
+          onProgress?.call(1);
+          return path;
         }
+        // Сервер ответил отказом: это не сетевой сбой, повторять нет смысла.
+        throw StorageRejected(r.statusCode, r.body);
+      } catch (e) {
+        if (e is StorageRejected) rethrow;
+        if (!_isNetworkIssue(e)) rethrow;
+        lastError = e;
       }
+    }
+    if (canChunk) {
+      final p = await Transfer.uploadChunked(
+        path,
+        bytes,
+        onProgress: onProgress,
+      );
+      await Transfer.setPreferChunks(true); // дальше сразу частями
+      return p;
+    }
+    if (bytes.length > Transfer.maxChunkedUpload && allowChunks) {
+      throw 'Сеть обрывает крупные передачи, а файл больше '
+          '${Transfer.maxChunkedUpload ~/ (1024 * 1024)} МБ. '
+          'Попробуйте файл поменьше (или включите VPN для всех приложений). '
+          'Подробности: $lastError';
     }
     throw lastError ?? 'Не удалось отправить файл';
   }
@@ -329,7 +378,7 @@ class Backend {
   }
 
   static Future<void> deleteFile(String path) async {
-    await client.storage.from('chat').remove([path]);
+    await client.storage.from('chat').remove(Transfer.allObjectNames(path));
   }
 
   static Future<void> updateMember(String id, String name, int color) async {

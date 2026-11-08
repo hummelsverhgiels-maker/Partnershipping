@@ -8,6 +8,7 @@ import 'package:partnershipping/data/store.dart';
 import 'package:partnershipping/logic/pattern.dart';
 import 'package:partnershipping/main.dart';
 import 'package:partnershipping/ui/feed_page.dart';
+import 'package:partnershipping/ui/more_page.dart';
 import 'package:partnershipping/ui/theme_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -102,6 +103,7 @@ Future<void> _settle(WidgetTester tester) async {
 }
 
 void main() {
+  AppStore.saveDelay = Duration.zero;
   late bool realFont;
   setUpAll(() async {
     realFont = await _loadRoboto();
@@ -136,6 +138,29 @@ void main() {
         expect(tester.takeException(), isNull);
 
         Finder nav(String label) => find.byKey(ValueKey('tab-$label'));
+        Finder moreScroll() => find
+            .descendant(
+              of: find.byType(MorePage),
+              matching: find.byType(Scrollable),
+            )
+            .first;
+        Future<void> back() async {
+          await tester
+              .state<NavigatorState>(find.byType(Navigator).first)
+              .maybePop();
+          await _settle(tester);
+        }
+
+        Future<void> moreItem(String title) async {
+          await tester.scrollUntilVisible(
+            find.text(title),
+            200,
+            scrollable: moreScroll(),
+          );
+          await _settle(tester);
+          await tester.tap(find.text(title));
+          await _settle(tester);
+        }
 
         // «Сегодня»
         expect(
@@ -143,7 +168,7 @@ void main() {
           findsNothing,
         ); // заголовок: приветствие + имя
         expect(find.textContaining('Саша'), findsWidgets);
-        expect(find.text('ДЕЛА НА СЕГОДНЯ'), findsOneWidget);
+        expect(find.text('НАСТРОЕНИЕ'), findsOneWidget);
 
         // Настроение: «+» открывает выбор состояний, выбранное сохраняется
         await tester.dragUntilVisible(
@@ -263,23 +288,105 @@ void main() {
             .maybePop();
         await _settle(tester);
 
-        // Ещё и вложенные экраны
+        // Собака (в «Ещё»): отметки, план выгула, здоровье, запасы, паспорт
         await tester.tap(nav('Ещё'));
         await _settle(tester);
+        final today = DateTime.now();
+        await tester.tap(find.text('Собака сегодня'));
+        await _settle(tester);
+        await tester.tap(find.byKey(const ValueKey('dog-item-walk_m')));
+        await _settle(tester);
+        expect(store.dogDoneOf(today, 'walk_m'), isNotNull);
+        expect(tester.takeException(), isNull);
+        await back();
+
+        await moreItem('Кто гуляет');
+        final slot = find.byKey(
+          ValueKey(
+            'slot-${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}-e',
+          ),
+        );
+        await tester.tap(slot);
+        await _settle(tester);
+        await tester.tap(find.text('Гуляю я'));
+        await _settle(tester);
+        expect(store.dogPlanOf(today, 'e'), store.session!.memberId);
+        expect(find.textContaining('договорились'), findsWidgets);
+        expect(tester.takeException(), isNull);
+        await back();
+
+        await moreItem('Здоровье');
+        await tester.tap(find.text('Добавить основные'));
+        await _settle(tester);
+        expect(store.dogCare.length, 4);
+        await tester.tap(find.text('Сделано').first);
+        await _settle(tester);
+        expect(store.dogCare.where((r) => r.s('last') != null).length, 1);
+        await tester.tap(find.text('Процедура'));
+        await _settle(tester);
+        expect(find.text('Новая процедура'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await back(); // закрыть окно
+        expect(tester.takeException(), isNull);
+        await back();
+
+        await moreItem('Запасы');
+        await tester.tap(find.text('Добавить корм, лакомства, пакеты'));
+        await _settle(tester);
+        expect(store.dogSupplies.length, 4);
+        await tester.tap(find.text('В покупки').first);
+        await _settle(tester);
+        expect(
+          store.shopping
+              .where((r) => (r.s('title') ?? '').contains('корм'))
+              .length,
+          1,
+        );
+        expect(tester.takeException(), isNull);
+        await back();
+
+        await moreItem('Паспорт собаки');
+        await tester.enterText(find.byType(TextField).first, 'Бублик');
+        await tester.tap(find.text('Сохранить').first);
+        await _settle(tester);
+        expect(store.dogName, 'Бублик');
+        expect(tester.takeException(), isNull);
+        await back();
+        await tester.scrollUntilVisible(
+          find.text('Бублик сегодня'),
+          -200,
+          scrollable: moreScroll(),
+        );
+        expect(find.text('Бублик сегодня'), findsOneWidget);
+
+        // Ещё и вложенные экраны
         for (final item in [
           'Заработок',
           'Важные даты',
           'Бюджет',
           'Настройки',
         ]) {
-          await tester.tap(find.text(item));
-          await _settle(tester);
+          await moreItem(item);
           expect(tester.takeException(), isNull, reason: item);
-          await tester
-              .state<NavigatorState>(find.byType(Navigator).first)
-              .maybePop();
-          await _settle(tester);
+          await back();
         }
+        // карточка собаки на «Сегодня»
+        await tester.tap(nav('Сегодня'));
+        await _settle(tester);
+        await tester.dragUntilVisible(
+          find.byKey(const ValueKey('dog-today-card')),
+          find.byType(ListView).first,
+          const Offset(0, -150),
+        );
+        expect(find.text('Бублик сегодня'), findsWidgets);
+        await tester.tap(nav('Ещё'));
+        await _settle(tester);
+        await tester.scrollUntilVisible(
+          find.text('Настройки'),
+          200,
+          scrollable: moreScroll(),
+        );
+        await _settle(tester);
 
         // Аватарка: окно выбора открывается, картинка выбирается и видна в профиле
         store.setAvatar('emoji:🦊');

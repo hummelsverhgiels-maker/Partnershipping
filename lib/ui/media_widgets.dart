@@ -64,8 +64,20 @@ class ImageThumbState extends State<ImageThumb> {
                 future: _future,
                 builder: (context, snap) {
                   if (snap.hasError) {
-                    return _placeholder(
-                      child: const Icon(Icons.broken_image_outlined),
+                    // не загрузилось — нажмите, чтобы попробовать ещё раз
+                    return GestureDetector(
+                      onTap: () => setState(
+                        () => _future = MediaService.bytes(widget.path),
+                      ),
+                      child: _placeholder(
+                        child: const Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.refresh_rounded),
+                            Text('Повторить', style: TextStyle(fontSize: 11)),
+                          ],
+                        ),
+                      ),
                     );
                   }
                   if (!snap.hasData) {

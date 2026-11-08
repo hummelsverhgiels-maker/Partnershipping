@@ -7,6 +7,7 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'data/backend.dart';
 import 'data/store.dart';
+import 'data/transfer.dart';
 import 'services/notifier.dart';
 import 'services/push_service.dart';
 import 'services/widget_service.dart';
@@ -29,6 +30,7 @@ Future<void> main() async {
     debugPrint('Уведомления не запущены: $e');
   }
   await themeController.load();
+  await Transfer.load();
   final store = AppStore();
   await store.init();
   // Firebase грузится в фоне: если серверы Google недоступны, приложение всё равно запустится.
@@ -76,6 +78,7 @@ class _PartnershippingAppState extends State<PartnershippingApp>
           who,
           cats,
           lastMessage: msgs.isEmpty ? null : msgs.last.s('text'),
+          dogLine: widget.store.lastPartnerDogLine,
         );
       }
     };
@@ -99,6 +102,9 @@ class _PartnershippingAppState extends State<PartnershippingApp>
     if (state == AppLifecycleState.resumed) {
       widget.store.refresh();
       _onChanged();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      widget.store.persistNow();
     }
   }
 
@@ -109,7 +115,7 @@ class _PartnershippingAppState extends State<PartnershippingApp>
       if (!widget.store.hasSession) return;
       WidgetService.update(widget.store);
       PushService.sync(widget.store);
-      Notifier.reschedulePay(widget.store);
+      Notifier.rescheduleAll(widget.store);
     });
   }
 

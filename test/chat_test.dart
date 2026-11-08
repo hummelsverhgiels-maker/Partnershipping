@@ -3,6 +3,7 @@ import 'package:partnershipping/data/store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  AppStore.saveDelay = Duration.zero;
   mediaTests();
   test('чат: сообщение появляется и считается прочитанным', () async {
     SharedPreferences.setMockInitialValues({});
