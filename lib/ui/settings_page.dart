@@ -334,6 +334,19 @@ class SettingsPage extends StatelessWidget {
               style: const TextStyle(fontSize: 11, color: kInkSoft),
             ),
           ),
+          if (!store.isLocal && kSupabaseProxyUrl.isNotEmpty)
+            Center(
+              child: TextButton(
+                onPressed: () async {
+                  toast(context, 'Переключаю путь к серверу…');
+                  await Backend.switchPathIfPossible(force: true);
+                  if (!kIsWeb && context.mounted) {
+                    toast(context, 'Закройте приложение и откройте заново');
+                  }
+                },
+                child: const Text('Переключить путь к серверу'),
+              ),
+            ),
           const SizedBox(height: 8),
           Center(
             child: TextButton(

@@ -18,17 +18,19 @@ class Backend {
   /// Адрес, который реально используется (прямой или через посредника).
   static String activeUrl = kSupabaseUrl;
 
-  /// Выбор пути к серверу. В браузере (iPhone) сначала пробуем посредника:
+  /// Выбор пути к серверу. В браузере (iPhone) всегда сначала пробуем посредника:
   /// он стабильнее у провайдеров, которые режут прямой адрес. На Android сначала
-  /// прямой адрес. Что сработало, запоминаем.
+  /// прямой адрес. Ручное или автоматическое переключение действует 30 минут.
   static Future<String> _pickUrl() async {
     if (kSupabaseProxyUrl.isEmpty) return kSupabaseUrl;
-    SharedPreferences? prefs;
+    String? override;
     try {
-      prefs = await SharedPreferences.getInstance();
+      final prefs = await SharedPreferences.getInstance();
+      final at = prefs.getInt('server_switch_at') ?? 0;
+      final fresh = DateTime.now().millisecondsSinceEpoch - at < 30 * 60 * 1000;
+      if (fresh) override = prefs.getString('server_choice');
     } catch (_) {}
-    final pref = prefs?.getString('server_choice');
-    final proxyFirst = kIsWeb ? pref != 'direct' : pref == 'proxy';
+    final proxyFirst = kIsWeb ? override != 'direct' : override == 'proxy';
 
     final first = proxyFirst ? kSupabaseProxyUrl : kSupabaseUrl;
     final second = proxyFirst ? kSupabaseUrl : kSupabaseProxyUrl;
@@ -36,14 +38,7 @@ class Backend {
     final probeSecond = probeServer(
       second,
     ); // параллельно, чтобы не ждать лишнего
-    final chosen = await probeFirst
-        ? first
-        : (await probeSecond ? second : first);
-    await prefs?.setString(
-      'server_choice',
-      chosen == kSupabaseProxyUrl ? 'proxy' : 'direct',
-    );
-    return chosen;
+    return await probeFirst ? first : (await probeSecond ? second : first);
   }
 
   static bool isNetworkError(Object e) {
@@ -58,13 +53,15 @@ class Backend {
 
   /// Если выбранный путь стабильно не работает, запоминаем другой и
   /// перезапускаем сайт (в приложении на телефоне сработает при следующем запуске).
-  static Future<void> switchPathIfPossible() async {
+  static Future<void> switchPathIfPossible({bool force = false}) async {
     if (kSupabaseProxyUrl.isEmpty) return;
     try {
       final prefs = await SharedPreferences.getInstance();
       final last = prefs.getInt('server_switch_at') ?? 0;
       final now = DateTime.now().millisecondsSinceEpoch;
-      if (now - last < 10 * 60 * 1000) return; // не чаще раза в 10 минут
+      if (!force && now - last < 10 * 60 * 1000) {
+        return; // не чаще раза в 10 минут
+      }
       final usingProxy = activeUrl == kSupabaseProxyUrl;
       await prefs.setString('server_choice', usingProxy ? 'direct' : 'proxy');
       await prefs.setInt('server_switch_at', now);
