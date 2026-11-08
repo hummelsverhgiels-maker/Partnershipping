@@ -333,7 +333,7 @@ class _ChatPageState extends State<ChatPage> {
               const SizedBox(width: 6),
               Text(
                 partner.name,
-                style: const TextStyle(fontSize: 16, color: kInkSoft),
+                style: TextStyle(fontSize: 16, color: kInkSoft),
               ),
             ],
           ],
@@ -364,10 +364,10 @@ class _ChatPageState extends State<ChatPage> {
             ),
           ),
           if (partner == null && _tab == 0)
-            const Padding(
+            Padding(
               padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: SoftCard(
-                color: Color(0xFFFFF1D6),
+                color: kWarnBg,
                 child: Text(
                   'Партнёр ещё не подключился. Сообщения увидит, когда зайдёт в пару.',
                 ),
@@ -425,7 +425,7 @@ class _ChatPageState extends State<ChatPage> {
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 child: Text(
                   longDate(DateTime.fromMillisecondsSinceEpoch(ts)),
-                  style: const TextStyle(color: kInkSoft, fontSize: 12),
+                  style: TextStyle(color: kInkSoft, fontSize: 12),
                 ),
               ),
             _bubble(m, ts),
@@ -442,6 +442,10 @@ class _ChatPageState extends State<ChatPage> {
     final width = MediaQuery.of(context).size.width * 0.78;
     final type = m.s('type') ?? 'text';
     final text = m.s('text');
+    // Свои сообщения лежат на пастельной плашке (всегда тёмный текст).
+    // Чужие полупрозрачны и подстраиваются под тему.
+    final fg = mine ? kOnPastel : kInk;
+    final fgSoft = mine ? kOnPastel.withValues(alpha: 0.6) : kInkSoft;
 
     Widget content;
     switch (type) {
@@ -470,18 +474,19 @@ class _ChatPageState extends State<ChatPage> {
           ),
         );
       case 'audio':
-        content = VoicePlayer(path: m.s('path')!, durationMs: m.i('dur'));
+        content = VoicePlayer(
+          path: m.s('path')!,
+          durationMs: m.i('dur'),
+          color: fg,
+          softColor: fgSoft,
+        );
       case 'file':
         content = GestureDetector(
           onTap: () => openFileExternally(context, m.s('path')!),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
-                Icons.insert_drive_file_outlined,
-                color: kInk,
-                size: 30,
-              ),
+              Icon(Icons.insert_drive_file_outlined, color: fg, size: 30),
               const SizedBox(width: 8),
               Flexible(
                 child: Column(
@@ -491,14 +496,11 @@ class _ChatPageState extends State<ChatPage> {
                       m.s('name') ?? 'Файл',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: kInk,
-                      ),
+                      style: TextStyle(fontWeight: FontWeight.w700, color: fg),
                     ),
                     Text(
                       fmtSize(m.i('size') ?? 0),
-                      style: const TextStyle(fontSize: 12, color: kInkSoft),
+                      style: TextStyle(fontSize: 12, color: fgSoft),
                     ),
                   ],
                 ),
@@ -507,10 +509,7 @@ class _ChatPageState extends State<ChatPage> {
           ),
         );
       default:
-        content = Text(
-          text ?? '',
-          style: const TextStyle(fontSize: 16, color: kInk),
-        );
+        content = Text(text ?? '', style: TextStyle(fontSize: 16, color: fg));
     }
 
     return Align(
@@ -538,10 +537,7 @@ class _ChatPageState extends State<ChatPage> {
               if (type != 'text' && text != null && text.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
-                  child: Text(
-                    text,
-                    style: const TextStyle(fontSize: 15, color: kInk),
-                  ),
+                  child: Text(text, style: TextStyle(fontSize: 15, color: fg)),
                 ),
               const SizedBox(height: 3),
               Row(
@@ -556,10 +552,7 @@ class _ChatPageState extends State<ChatPage> {
                         color: Color(0xFFD9A400),
                       ),
                     ),
-                  Text(
-                    _hm(ts),
-                    style: const TextStyle(fontSize: 11, color: kInkSoft),
-                  ),
+                  Text(_hm(ts), style: TextStyle(fontSize: 11, color: fgSoft)),
                 ],
               ),
             ],
@@ -676,7 +669,7 @@ class _ChatPageState extends State<ChatPage> {
                     Text(
                       '${author?.name ?? ''} · ${ts.day}.${ts.month.toString().padLeft(2, '0')} ${_hm(ts.millisecondsSinceEpoch)}'
                       '${isAudio ? '' : ' · ${fmtSize(m.i('size') ?? 0)}'}',
-                      style: const TextStyle(fontSize: 12, color: kInkSoft),
+                      style: TextStyle(fontSize: 12, color: kInkSoft),
                     ),
                   ],
                 ),
@@ -692,7 +685,7 @@ class _ChatPageState extends State<ChatPage> {
               ),
               IconButton(
                 onPressed: () => _messageMenu(m),
-                icon: const Icon(Icons.more_vert, color: kInkSoft),
+                icon: Icon(Icons.more_vert, color: kInkSoft),
               ),
             ],
           ),
@@ -839,7 +832,7 @@ class _ImageThumbState extends State<_ImageThumb> {
   }
 
   Widget _placeholder({Widget? child}) => ColoredBox(
-    color: const Color(0xFFF1E6DF),
+    color: kPlaceholder,
     child: Center(child: child),
   );
 

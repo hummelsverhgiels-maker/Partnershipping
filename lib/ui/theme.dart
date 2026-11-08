@@ -2,15 +2,137 @@ import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
-const kBg = Color(0xFFFFF8F3);
-const kBgTop = Color(0xFFFFEFE4);
+// Цвета, которые не меняются между светлой и тёмной темой.
 const kAccent = Color(0xFFF2A88F);
 const kAccentDeep = Color(0xFFE58E70);
-const kAccentSoft = Color(0xFFFCE3D9);
-const kInk = Color(0xFF4A3F3A);
-const kInkSoft = Color(0xFF8C7F78);
-const kLine = Color(0xFFF1E3DA);
-const kSwitchOff = Color(0xFFE3D6CE);
+const kOnPastel = Color(0xFF4A3F3A); // текст на пастельных плашках участников
+
+class _Palette {
+  final Color bg,
+      bgTop,
+      surface,
+      ink,
+      inkSoft,
+      line,
+      accentSoft,
+      switchOff,
+      field,
+      border,
+      cardBorder,
+      warnBg,
+      errBg,
+      hero1,
+      hero2,
+      outMonth,
+      faint,
+      placeholder;
+  const _Palette({
+    required this.bg,
+    required this.bgTop,
+    required this.surface,
+    required this.ink,
+    required this.inkSoft,
+    required this.line,
+    required this.accentSoft,
+    required this.switchOff,
+    required this.field,
+    required this.border,
+    required this.cardBorder,
+    required this.warnBg,
+    required this.errBg,
+    required this.hero1,
+    required this.hero2,
+    required this.outMonth,
+    required this.faint,
+    required this.placeholder,
+  });
+}
+
+const _light = _Palette(
+  bg: Color(0xFFFFF8F3),
+  bgTop: Color(0xFFFFEFE4),
+  surface: Colors.white,
+  ink: Color(0xFF4A3F3A),
+  inkSoft: Color(0xFF8C7F78),
+  line: Color(0xFFF1E3DA),
+  accentSoft: Color(0xFFFCE3D9),
+  switchOff: Color(0xFFE3D6CE),
+  field: Color(0xFFFFF6F0),
+  border: Color(0xFFEBDDD4),
+  cardBorder: Color(0xFFF4E8E0),
+  warnBg: Color(0xFFFFF1D6),
+  errBg: Color(0xFFFFE3E0),
+  hero1: Color(0xFFFFE0D2),
+  hero2: Color(0xFFFBD3E0),
+  outMonth: Color(0xFFFFFCFA),
+  faint: Color(0xFFD3C8C1),
+  placeholder: Color(0xFFF1E6DF),
+);
+
+const _dark = _Palette(
+  bg: Color(0xFF1B1614),
+  bgTop: Color(0xFF261C19),
+  surface: Color(0xFF28211E),
+  ink: Color(0xFFF4EAE4),
+  inkSoft: Color(0xFFB0A199),
+  line: Color(0xFF3A302C),
+  accentSoft: Color(0xFF4A2F27),
+  switchOff: Color(0xFF4E433E),
+  field: Color(0xFF332A26),
+  border: Color(0xFF4A3F3A),
+  cardBorder: Color(0xFF362D29),
+  warnBg: Color(0xFF4A3B22),
+  errBg: Color(0xFF4F2D2B),
+  hero1: Color(0xFF4A2E26),
+  hero2: Color(0xFF462A3A),
+  outMonth: Color(0xFF211A18),
+  faint: Color(0xFF5E514B),
+  placeholder: Color(0xFF3A302C),
+);
+
+// Текущие цвета. Меняются при смене темы (см. applyPalette).
+bool kDark = false;
+Color kBg = _light.bg;
+Color kBgTop = _light.bgTop;
+Color kSurface = _light.surface;
+Color kInk = _light.ink;
+Color kInkSoft = _light.inkSoft;
+Color kLine = _light.line;
+Color kAccentSoft = _light.accentSoft;
+Color kSwitchOff = _light.switchOff;
+Color kField = _light.field;
+Color kBorder = _light.border;
+Color kCardBorder = _light.cardBorder;
+Color kWarnBg = _light.warnBg;
+Color kErrBg = _light.errBg;
+Color kHero1 = _light.hero1;
+Color kHero2 = _light.hero2;
+Color kOutMonth = _light.outMonth;
+Color kFaint = _light.faint;
+Color kPlaceholder = _light.placeholder;
+
+void applyPalette(bool dark) {
+  final p = dark ? _dark : _light;
+  kDark = dark;
+  kBg = p.bg;
+  kBgTop = p.bgTop;
+  kSurface = p.surface;
+  kInk = p.ink;
+  kInkSoft = p.inkSoft;
+  kLine = p.line;
+  kAccentSoft = p.accentSoft;
+  kSwitchOff = p.switchOff;
+  kField = p.field;
+  kBorder = p.border;
+  kCardBorder = p.cardBorder;
+  kWarnBg = p.warnBg;
+  kErrBg = p.errBg;
+  kHero1 = p.hero1;
+  kHero2 = p.hero2;
+  kOutMonth = p.outMonth;
+  kFaint = p.faint;
+  kPlaceholder = p.placeholder;
+}
 
 /// Пастельные цвета для участников.
 const kMemberColors = <int>[
@@ -49,19 +171,21 @@ class SoftScrollBehavior extends MaterialScrollBehavior {
 }
 
 ThemeData buildTheme() {
+  final dark = kDark;
   final scheme = ColorScheme.fromSeed(
     seedColor: kAccent,
-    brightness: Brightness.light,
-  ).copyWith(primary: kAccentDeep, surface: Colors.white, onSurface: kInk);
+    brightness: dark ? Brightness.dark : Brightness.light,
+  ).copyWith(primary: kAccentDeep, surface: kSurface, onSurface: kInk);
 
   const pill = StadiumBorder();
   const cupertino = CupertinoPageTransitionsBuilder();
 
   return ThemeData(
     useMaterial3: true,
+    brightness: dark ? Brightness.dark : Brightness.light,
     colorScheme: scheme,
     scaffoldBackgroundColor: Colors.transparent,
-    canvasColor: Colors.white,
+    canvasColor: kSurface,
     splashColor: kAccent.withValues(alpha: 0.10),
     highlightColor: Colors.transparent,
     hoverColor: kAccent.withValues(alpha: 0.05),
@@ -75,11 +199,12 @@ ThemeData buildTheme() {
         TargetPlatform.fuchsia: cupertino,
       },
     ),
-    textTheme: Typography.material2021().black.apply(
-      bodyColor: kInk,
-      displayColor: kInk,
-    ),
-    appBarTheme: const AppBarTheme(
+    textTheme:
+        (dark
+                ? Typography.material2021().white
+                : Typography.material2021().black)
+            .apply(bodyColor: kInk, displayColor: kInk),
+    appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
       foregroundColor: kInk,
       elevation: 0,
@@ -95,13 +220,13 @@ ThemeData buildTheme() {
       ),
     ),
     cardTheme: CardThemeData(
-      color: Colors.white,
+      color: kSurface,
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: Colors.white,
+      backgroundColor: kSurface,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       height: 72,
@@ -138,8 +263,8 @@ ThemeData buildTheme() {
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(64, 56),
         foregroundColor: kInk,
-        backgroundColor: Colors.white,
-        side: const BorderSide(color: Color(0xFFEBDDD4)),
+        backgroundColor: kSurface,
+        side: BorderSide(color: kBorder),
         shape: pill,
         animationDuration: const Duration(milliseconds: 160),
         textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
@@ -164,18 +289,16 @@ ThemeData buildTheme() {
     ),
     chipTheme: ChipThemeData(
       shape: pill,
-      side: const BorderSide(color: Color(0xFFEBDDD4)),
-      backgroundColor: Colors.white,
+      side: BorderSide(color: kBorder),
+      backgroundColor: kSurface,
       selectedColor: kAccentSoft,
       showCheckmark: false,
-      labelStyle: const TextStyle(fontWeight: FontWeight.w700, color: kInk),
+      labelStyle: TextStyle(fontWeight: FontWeight.w700, color: kInk),
     ),
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStateProperty.all(Colors.white),
       trackColor: WidgetStateProperty.resolveWith(
-        (st) => st.contains(WidgetState.selected)
-            ? kAccentDeep
-            : const Color(0xFFE3D6CE),
+        (st) => st.contains(WidgetState.selected) ? kAccentDeep : kSwitchOff,
       ),
       trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
     ),
@@ -184,16 +307,16 @@ ThemeData buildTheme() {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: Colors.white,
-      hintStyle: const TextStyle(color: kInkSoft),
+      fillColor: kSurface,
+      hintStyle: TextStyle(color: kInkSoft),
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(22),
-        borderSide: const BorderSide(color: Color(0xFFEBDDD4)),
+        borderSide: BorderSide(color: kBorder),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(22),
-        borderSide: const BorderSide(color: Color(0xFFEBDDD4)),
+        borderSide: BorderSide(color: kBorder),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(22),
@@ -201,33 +324,33 @@ ThemeData buildTheme() {
       ),
     ),
     dividerColor: kLine,
-    bottomSheetTheme: const BottomSheetThemeData(
-      backgroundColor: Colors.white,
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: kSurface,
       surfaceTintColor: Colors.transparent,
       showDragHandle: true,
-      dragHandleColor: Color(0xFFE3D6CE),
+      dragHandleColor: kSwitchOff,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
     ),
     dialogTheme: DialogThemeData(
-      backgroundColor: Colors.white,
+      backgroundColor: kSurface,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: kInk,
-      contentTextStyle: const TextStyle(color: Colors.white, fontSize: 15),
+      contentTextStyle: TextStyle(color: kBg, fontSize: 15),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     ),
     segmentedButtonTheme: SegmentedButtonThemeData(
       style: SegmentedButton.styleFrom(
-        backgroundColor: Colors.white,
+        backgroundColor: kSurface,
         foregroundColor: kInkSoft,
         selectedBackgroundColor: kAccentSoft,
         selectedForegroundColor: kInk,
-        side: const BorderSide(color: Color(0xFFEBDDD4)),
+        side: BorderSide(color: kBorder),
         textStyle: const TextStyle(fontWeight: FontWeight.w700),
       ),
     ),

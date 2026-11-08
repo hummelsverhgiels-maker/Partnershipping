@@ -174,7 +174,15 @@ class _MediaViewerState extends State<MediaViewer> {
 class VoicePlayer extends StatefulWidget {
   final String path;
   final int? durationMs;
-  const VoicePlayer({super.key, required this.path, this.durationMs});
+  final Color? color;
+  final Color? softColor;
+  const VoicePlayer({
+    super.key,
+    required this.path,
+    this.durationMs,
+    this.color,
+    this.softColor,
+  });
 
   @override
   State<VoicePlayer> createState() => _VoicePlayerState();
@@ -264,7 +272,7 @@ class _VoicePlayerState extends State<VoicePlayer> {
                       ? Icons.pause_circle_filled
                       : Icons.play_circle_filled,
                   size: 38,
-                  color: kInk,
+                  color: widget.color ?? kInk,
                 ),
               ),
         SizedBox(
@@ -276,14 +284,17 @@ class _VoicePlayerState extends State<VoicePlayer> {
                 value: progress,
                 minHeight: 5,
                 borderRadius: BorderRadius.circular(4),
-                backgroundColor: Colors.white54,
-                color: kInk,
+                backgroundColor: (widget.color ?? kInk).withValues(alpha: 0.18),
+                color: widget.color ?? kInk,
               ),
               const SizedBox(height: 4),
               Text(
                 '${fmtDuration(_playing || _pos > Duration.zero ? _pos.inMilliseconds : total)}'
                 ' / ${fmtDuration(total)}',
-                style: const TextStyle(fontSize: 11, color: kInkSoft),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: widget.softColor ?? kInkSoft,
+                ),
               ),
             ],
           ),

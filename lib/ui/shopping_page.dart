@@ -131,7 +131,7 @@ class _ShoppingPageState extends State<ShoppingPage> {
             color: const Color(0xFFF7B7B7),
             borderRadius: BorderRadius.circular(22),
           ),
-          child: const Icon(Icons.delete_outline, color: kInk),
+          child: Icon(Icons.delete_outline, color: kInk),
         ),
         onDismissed: (_) => s.remove(r.id),
         child: SoftCard(
@@ -143,7 +143,7 @@ class _ShoppingPageState extends State<ShoppingPage> {
               Checkbox(
                 value: bought,
                 shape: const CircleBorder(),
-                side: const BorderSide(color: kInkSoft, width: 2),
+                side: BorderSide(color: kInkSoft, width: 2),
                 onChanged: (v) => s.upsert('shopping', {
                   ...r.data,
                   'bought': v ?? false,
@@ -164,7 +164,7 @@ class _ShoppingPageState extends State<ShoppingPage> {
               IconButton(
                 tooltip: 'Удалить',
                 onPressed: () => s.remove(r.id),
-                icon: const Icon(Icons.close, color: kInkSoft, size: 20),
+                icon: Icon(Icons.close, color: kInkSoft, size: 20),
               ),
             ],
           ),

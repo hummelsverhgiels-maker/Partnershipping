@@ -347,7 +347,7 @@ class TodoTile extends StatelessWidget {
           Checkbox(
             value: done,
             shape: const CircleBorder(),
-            side: const BorderSide(color: kInkSoft, width: 2),
+            side: BorderSide(color: kInkSoft, width: 2),
             onChanged: (v) {
               final nv = v ?? false;
               store.upsert('todo', {
@@ -375,7 +375,7 @@ class TodoTile extends StatelessWidget {
                 if (sub.isNotEmpty)
                   Text(
                     sub.join(' · '),
-                    style: const TextStyle(fontSize: 13, color: kInkSoft),
+                    style: TextStyle(fontSize: 13, color: kInkSoft),
                   ),
               ],
             ),

@@ -8,6 +8,7 @@ import '../data/store.dart';
 import '../services/notifier.dart';
 import '../services/push_service.dart';
 import '../services/scriptable.dart';
+import 'theme_controller.dart';
 import '../util.dart';
 import 'common.dart';
 import 'theme.dart';
@@ -51,8 +52,69 @@ class SettingsPage extends StatelessWidget {
                     ),
                   ),
                 ),
-                const Icon(Icons.edit_outlined, color: kInkSoft),
+                Icon(Icons.edit_outlined, color: kInkSoft),
               ],
+            ),
+          ),
+          const SectionTitle('Внешний вид'),
+          SoftCard(
+            child: ListenableBuilder(
+              listenable: themeController,
+              builder: (context, _) => Row(
+                children: [
+                  for (final o in const [
+                    ('system', 'Как в телефоне', Icons.brightness_auto_rounded),
+                    ('light', 'Светлая', Icons.light_mode_rounded),
+                    ('dark', 'Тёмная', Icons.dark_mode_rounded),
+                  ])
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 3),
+                        child: PressScale(
+                          scale: 0.94,
+                          onTap: () => themeController.setMode(o.$1),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: themeController.mode == o.$1
+                                  ? kAccentSoft
+                                  : kField,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: themeController.mode == o.$1
+                                    ? kAccentDeep
+                                    : kBorder,
+                                width: themeController.mode == o.$1 ? 1.6 : 1,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  o.$3,
+                                  size: 22,
+                                  color: themeController.mode == o.$1
+                                      ? kAccentDeep
+                                      : kInkSoft,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  o.$2,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: kInk,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
           const SectionTitle('Пара'),
@@ -66,13 +128,13 @@ class SettingsPage extends StatelessWidget {
                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'Данные хранятся только на этом телефоне. '
                     'Когда сервер синхронизации будет подключён, нажмите «Выйти» и создайте пару.',
                     style: TextStyle(color: kInkSoft),
                   ),
                 ] else ...[
-                  const Text('Код пары', style: TextStyle(color: kInkSoft)),
+                  Text('Код пары', style: TextStyle(color: kInkSoft)),
                   Row(
                     children: [
                       Expanded(
@@ -108,7 +170,7 @@ class SettingsPage extends StatelessWidget {
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ] else
-                        const Text(
+                        Text(
                           'Партнёр ещё не подключился',
                           style: TextStyle(color: kInkSoft),
                         ),
@@ -126,10 +188,7 @@ class SettingsPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (templates.isEmpty)
-                  const Text(
-                    'Пока нет шаблонов',
-                    style: TextStyle(color: kInkSoft),
-                  ),
+                  Text('Пока нет шаблонов', style: TextStyle(color: kInkSoft)),
                 Wrap(
                   spacing: 8,
                   children: [
@@ -162,7 +221,7 @@ class SettingsPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 if (rules.isEmpty)
-                  const Text('Не заданы', style: TextStyle(color: kInkSoft)),
+                  Text('Не заданы', style: TextStyle(color: kInkSoft)),
                 for (final r in rules)
                   ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -191,7 +250,7 @@ class SettingsPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 if (dates.isEmpty)
-                  const Text('Не заданы', style: TextStyle(color: kInkSoft)),
+                  Text('Не заданы', style: TextStyle(color: kInkSoft)),
                 for (final d in dates)
                   ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -231,7 +290,7 @@ class SettingsPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Если приложение стоит на iPhone без виджета, можно сделать виджет '
                     'через бесплатное приложение Scriptable.',
                     style: TextStyle(color: kInkSoft),
@@ -336,7 +395,7 @@ class SettingsPage extends StatelessWidget {
               'Версия $kBuild · сервер: ${Backend.activeUrl == kSupabaseUrl ? 'напрямую' : 'через посредника'}'
               '${store.lastErrorRaw != null ? '\nОшибка: ${store.lastErrorRaw!.length > 220 ? store.lastErrorRaw!.substring(0, 220) : store.lastErrorRaw}' : ''}',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 11, color: kInkSoft),
+              style: TextStyle(fontSize: 11, color: kInkSoft),
             ),
           ),
           if (!store.isLocal && kSupabaseProxyUrl.isNotEmpty)
@@ -395,7 +454,7 @@ class SettingsPage extends StatelessWidget {
                 ? 'Отправляю изменения: $pending'
                 : 'Нет связи с сервером${pending > 0 ? ' · ждёт отправки: $pending' : ''}'
                       '${store.lastError != null ? '\n${store.lastError}' : ''}',
-            style: const TextStyle(color: kInkSoft, fontSize: 13),
+            style: TextStyle(color: kInkSoft, fontSize: 13),
           ),
         ),
         IconButton(

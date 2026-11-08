@@ -93,7 +93,7 @@ class _ShiftSheetState extends State<_ShiftSheet> {
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
                   '${days.first.day}.${days.first.month} — ${days.last.day}.${days.last.month}',
-                  style: const TextStyle(color: kInkSoft),
+                  style: TextStyle(color: kInkSoft),
                 ),
               ),
             if (s.orderedMembers.length > 1) ...[
@@ -115,7 +115,7 @@ class _ShiftSheetState extends State<_ShiftSheet> {
             ],
             const SectionTitle('Быстрые шаблоны'),
             if (myTemplates.isEmpty)
-              const Text(
+              Text(
                 'Пока нет. Задайте время и отметьте «Сохранить как шаблон».',
                 style: TextStyle(color: kInkSoft),
               ),
@@ -154,7 +154,7 @@ class _ShiftSheetState extends State<_ShiftSheet> {
               ],
             ),
             if (_overnight)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 8),
                 child: Text(
                   '🌙 Ночная смена: закончится на следующий день',
@@ -230,7 +230,7 @@ class _ShiftSheetState extends State<_ShiftSheet> {
       },
       child: Column(
         children: [
-          Text(label, style: const TextStyle(color: kInkSoft, fontSize: 13)),
+          Text(label, style: TextStyle(color: kInkSoft, fontSize: 13)),
           Text(
             value,
             style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800),

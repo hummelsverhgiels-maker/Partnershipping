@@ -173,7 +173,7 @@ class SwitchRow extends StatelessWidget {
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),
                   DefaultTextStyle.merge(
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       color: kInkSoft,
                       height: 1.3,
@@ -214,9 +214,9 @@ class SoftCard extends StatelessWidget {
       child: Container(
         padding: padding,
         decoration: BoxDecoration(
-          color: color ?? Colors.white,
+          color: color ?? kSurface,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFF4E8E0)),
+          border: Border.all(color: kCardBorder),
         ),
         child: child,
       ),
@@ -237,7 +237,7 @@ class SectionTitle extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
               color: kInkSoft,
@@ -298,7 +298,7 @@ class ColorPicker extends StatelessWidget {
             child: AnimatedOpacity(
               duration: const Duration(milliseconds: 160),
               opacity: c == selected ? 1 : 0,
-              child: const Icon(Icons.check, color: kInk, size: 22),
+              child: Icon(Icons.check, color: kOnPastel, size: 22),
             ),
           ),
         ),
@@ -322,7 +322,7 @@ class EmptyHint extends StatelessWidget {
         Text(
           text,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: kInkSoft, fontSize: 15),
+          style: TextStyle(color: kInkSoft, fontSize: 15),
         ),
       ],
     ),

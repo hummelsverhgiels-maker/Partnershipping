@@ -13,6 +13,7 @@ import 'services/widget_service.dart';
 import 'ui/home_shell.dart';
 import 'ui/onboarding.dart';
 import 'ui/theme.dart';
+import 'ui/theme_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +28,7 @@ Future<void> main() async {
   } catch (e) {
     debugPrint('Уведомления не запущены: $e');
   }
+  await themeController.load();
   final store = AppStore();
   await store.init();
   // Firebase грузится в фоне: если серверы Google недоступны, приложение всё равно запустится.
@@ -102,7 +104,15 @@ class _PartnershippingAppState extends State<PartnershippingApp>
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: themeController,
+      builder: (context, _) => _buildApp(context),
+    );
+  }
+
+  Widget _buildApp(BuildContext context) {
     return MaterialApp(
+      key: ValueKey(themeController.isDark),
       title: 'V&V loving planning',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
@@ -112,7 +122,7 @@ class _PartnershippingAppState extends State<PartnershippingApp>
       builder: (context, child) {
         // Общий мягкий фон: лёгкий градиент от персикового к кремовому.
         final bg = DecoratedBox(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,

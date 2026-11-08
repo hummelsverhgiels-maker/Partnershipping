@@ -56,7 +56,7 @@ class DayPage extends StatelessWidget {
                 ),
               ),
               if (events.isEmpty)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.all(8),
                   child: Text('Событий нет', style: TextStyle(color: kInkSoft)),
                 ),
@@ -81,7 +81,7 @@ class DayPage extends StatelessWidget {
                             if (e.s('note') != null)
                               Text(
                                 e.s('note')!,
-                                style: const TextStyle(color: kInkSoft),
+                                style: TextStyle(color: kInkSoft),
                               ),
                           ],
                         ),
@@ -100,7 +100,7 @@ class DayPage extends StatelessWidget {
                 ),
               ),
               if (todos.isEmpty)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.all(8),
                   child: Text(
                     'Дел на этот день нет',
@@ -127,10 +127,10 @@ class DayPage extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFFFE0D2), Color(0xFFFBD3E0)],
+          colors: [kHero1, kHero2],
         ),
       ),
       child: Row(
@@ -141,7 +141,7 @@ class DayPage extends StatelessWidget {
               children: [
                 Text(
                   parts.first,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: kInkSoft,
@@ -150,7 +150,7 @@ class DayPage extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   parts.length > 1 ? parts.sublist(1).join(', ') : full,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -0.5,
@@ -164,7 +164,7 @@ class DayPage extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.75),
+                color: kSurface.withValues(alpha: 0.75),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Text(
@@ -216,7 +216,7 @@ class DayPage extends StatelessWidget {
               children: [
                 Text(
                   mine ? 'Я (${m.name})' : m.name,
-                  style: const TextStyle(color: kInkSoft, fontSize: 13),
+                  style: TextStyle(color: kInkSoft, fontSize: 13),
                 ),
                 Text(
                   main,
@@ -226,14 +226,11 @@ class DayPage extends StatelessWidget {
                   ),
                 ),
                 if (sub != null)
-                  Text(
-                    sub,
-                    style: const TextStyle(color: kInkSoft, fontSize: 13),
-                  ),
+                  Text(sub, style: TextStyle(color: kInkSoft, fontSize: 13)),
               ],
             ),
           ),
-          const Icon(Icons.edit_outlined, color: kInkSoft),
+          Icon(Icons.edit_outlined, color: kInkSoft),
         ],
       ),
     );
@@ -242,7 +239,7 @@ class DayPage extends StatelessWidget {
   Widget _payRow(PayItem p) {
     final m = store.memberById(p.memberId);
     return SoftCard(
-      color: const Color(0xFFFFF1D6),
+      color: kWarnBg,
       child: Row(
         children: [
           const Text('💰', style: TextStyle(fontSize: 24)),
@@ -261,7 +258,7 @@ class DayPage extends StatelessWidget {
                 if (p.shifted)
                   Text(
                     'перенесено с ${p.nominal.day}.${p.nominal.month.toString().padLeft(2, '0')}',
-                    style: const TextStyle(color: kInkSoft, fontSize: 13),
+                    style: TextStyle(color: kInkSoft, fontSize: 13),
                   ),
               ],
             ),

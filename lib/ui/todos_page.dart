@@ -78,7 +78,7 @@ class TodosPage extends StatelessWidget {
                       tilePadding: const EdgeInsets.symmetric(horizontal: 4),
                       title: Text(
                         'СДЕЛАНО (${done.length})',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
                           color: kInkSoft,

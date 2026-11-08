@@ -205,7 +205,7 @@ class _CalendarPageState extends State<CalendarPage> {
       child: Container(
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? kAccentDeep : const Color(0xFFFFF6F0),
+          color: selected ? kAccentDeep : kField,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: selected
@@ -392,7 +392,7 @@ class _CalendarPageState extends State<CalendarPage> {
                       ),
                     ),
                   )
-                : const Padding(
+                : Padding(
                     key: ValueKey('hint'),
                     padding: EdgeInsets.only(bottom: 8, top: 2),
                     child: Text(
@@ -420,7 +420,7 @@ class _CalendarPageState extends State<CalendarPage> {
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: kSurface,
           shape: BoxShape.circle,
           border: Border.all(color: kLine),
         ),
@@ -436,7 +436,7 @@ class _CalendarPageState extends State<CalendarPage> {
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 9, 10, 9),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: kSurface,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(color: kLine),
         ),
@@ -448,11 +448,7 @@ class _CalendarPageState extends State<CalendarPage> {
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
             ),
             const SizedBox(width: 2),
-            const Icon(
-              Icons.keyboard_arrow_down_rounded,
-              size: 22,
-              color: kInkSoft,
-            ),
+            Icon(Icons.keyboard_arrow_down_rounded, size: 22, color: kInkSoft),
           ],
         ),
       ),
@@ -476,15 +472,9 @@ class _CalendarPageState extends State<CalendarPage> {
             ),
             const SizedBox(width: 14),
           ],
-          const Text(
-            '₽ выплата',
-            style: TextStyle(fontSize: 12, color: kInkSoft),
-          ),
+          Text('₽ выплата', style: TextStyle(fontSize: 12, color: kInkSoft)),
           const SizedBox(width: 10),
-          const Text(
-            '● событие',
-            style: TextStyle(fontSize: 12, color: kInkSoft),
-          ),
+          Text('● событие', style: TextStyle(fontSize: 12, color: kInkSoft)),
         ],
       ),
     );
@@ -520,7 +510,7 @@ class _CalendarPageState extends State<CalendarPage> {
           margin: const EdgeInsets.all(1.5),
           padding: const EdgeInsets.fromLTRB(6, 5, 3, 3),
           decoration: BoxDecoration(
-            color: sel ? kAccentSoft : const Color(0xFFFFFCFA),
+            color: sel ? kAccentSoft : kOutMonth,
             borderRadius: BorderRadius.circular(16),
             border: sel ? Border.all(color: kAccentDeep, width: 2) : null,
           ),
@@ -528,10 +518,10 @@ class _CalendarPageState extends State<CalendarPage> {
             alignment: Alignment.topLeft,
             child: Text(
               '${d.day}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFFD3C8C1),
+                color: kFaint,
               ),
             ),
           ),
@@ -549,7 +539,7 @@ class _CalendarPageState extends State<CalendarPage> {
         margin: const EdgeInsets.all(1.5),
         padding: const EdgeInsets.fromLTRB(3, 3, 3, 3),
         decoration: BoxDecoration(
-          color: sel ? kAccentSoft : Colors.white,
+          color: sel ? kAccentSoft : kSurface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: sel ? kAccentDeep : (isToday ? kAccent : kLine),
@@ -647,7 +637,7 @@ class _CalendarPageState extends State<CalendarPage> {
                   style: const TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
-                    color: kInk,
+                    color: kOnPastel,
                   ),
                 ),
               ),

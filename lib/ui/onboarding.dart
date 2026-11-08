@@ -79,7 +79,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Код всегда можно посмотреть в «Настройках».',
               textAlign: TextAlign.center,
               style: TextStyle(color: kInkSoft),
@@ -147,7 +147,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            const Center(
+            Center(
               child: Text(
                 'V&V loving planning',
                 style: TextStyle(
@@ -159,7 +159,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
             const SizedBox(height: 4),
-            const Center(
+            Center(
               child: Text(
                 'Смены, выходные, зарплата, дела и покупки',
                 style: TextStyle(color: kInkSoft),
@@ -197,17 +197,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             if (_error != null) ...[
               const SizedBox(height: 16),
               SoftCard(
-                color: const Color(0xFFFFE3E0),
+                color: kErrBg,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_error!, style: const TextStyle(color: kInk)),
+                    Text(_error!, style: TextStyle(color: kInk)),
                     if (_raw != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: Text(
                           'Подробности: ${_raw!.length > 220 ? _raw!.substring(0, 220) : _raw}',
-                          style: const TextStyle(fontSize: 11, color: kInkSoft),
+                          style: TextStyle(fontSize: 11, color: kInkSoft),
                         ),
                       ),
                   ],
@@ -218,7 +218,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Center(
               child: Text(
                 'Версия $kBuild · сервер: ${Backend.activeUrl == kSupabaseUrl ? 'напрямую' : 'через посредника'}',
-                style: const TextStyle(fontSize: 11, color: kInkSoft),
+                style: TextStyle(fontSize: 11, color: kInkSoft),
               ),
             ),
           ],
@@ -270,8 +270,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   List<Widget> _chooseStep() => [
     if (!Backend.configured)
-      const SoftCard(
-        color: Color(0xFFFFF1D6),
+      SoftCard(
+        color: kWarnBg,
         child: Text(
           'Сервер синхронизации ещё не подключён, поэтому пару создать нельзя. '
           'Пока можно пользоваться приложением только на этом телефоне.',
@@ -327,7 +327,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Введите код, который показан в приложении у партнёра. '
             'Также так можно вернуться в пару после переустановки.',
             style: TextStyle(color: kInkSoft),
@@ -402,7 +402,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
         const SizedBox(height: 6),
       ] else
-        const Padding(
+        Padding(
           padding: EdgeInsets.only(top: 6),
           child: Text(
             'В паре уже двое. Если вы переустановили приложение, выберите себя ниже.',
