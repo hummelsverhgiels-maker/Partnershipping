@@ -23,6 +23,7 @@ class DayPage extends StatelessWidget {
         final events = store.events.where((e) => e.s('date') == key).toList();
         final todos = store.todos.where((t) => t.s('date') == key).toList();
         final pays = store.schedule.paymentsInRange(date, date);
+        final imps = store.importantOn(date);
         return Scaffold(
           appBar: AppBar(
             title: const Text('День'),
@@ -44,6 +45,33 @@ class DayPage extends StatelessWidget {
                 const SectionTitle('ЗАРПЛАТА И АВАНС'),
                 for (final p in pays) ...[
                   _payRow(p),
+                  const SizedBox(height: 10),
+                ],
+              ],
+              if (imps.isNotEmpty) ...[
+                const SectionTitle('ВАЖНАЯ ДАТА'),
+                for (final r in imps) ...[
+                  SoftCard(
+                    color: kWarnBg,
+                    child: Row(
+                      children: [
+                        Text(
+                          r.s('emoji') ?? '⭐',
+                          style: const TextStyle(fontSize: 26),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            r.s('title') ?? '',
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 10),
                 ],
               ],

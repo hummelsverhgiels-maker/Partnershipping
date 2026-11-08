@@ -24,7 +24,10 @@ void main() {
     await store.startLocal('Саша', 0xFFFBC9A0);
     await tester.pumpWidget(PartnershippingApp(store: store));
     await tester.pump();
-    expect(find.text('Календарь'), findsWidgets);
+    // Первая вкладка — «Сегодня»; смены видны в календаре.
+    expect(find.text('Сегодня'), findsWidgets);
+    await tester.tap(find.text('Календарь').last);
+    await tester.pumpAndSettle();
     final now = DateTime.now();
     store.setShift(
       store.session!.memberId,

@@ -6,6 +6,7 @@ import '../logic/schedule.dart';
 import '../util.dart';
 import 'common.dart';
 import 'day_page.dart';
+import 'pattern_sheet.dart';
 import 'shift_sheet.dart';
 import 'theme.dart';
 
@@ -262,6 +263,12 @@ class _CalendarPageState extends State<CalendarPage> {
           ),
         ),
         actions: [
+          if (!selecting)
+            IconButton(
+              tooltip: 'График по шаблону',
+              onPressed: () => showPatternSheet(context, s),
+              icon: const Icon(Icons.auto_awesome_rounded),
+            ),
           if (!selecting && !isCurrentMonth)
             Padding(
               padding: const EdgeInsets.only(right: 12),
@@ -284,13 +291,16 @@ class _CalendarPageState extends State<CalendarPage> {
               children: [
                 _roundButton(Icons.chevron_left_rounded, () => _shiftMonth(-1)),
                 Expanded(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _headerPill(_monthName(_month), _pickMonth),
-                      const SizedBox(width: 8),
-                      _headerPill('${_month.year}', _pickYear),
-                    ],
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _headerPill(_monthName(_month), _pickMonth),
+                        const SizedBox(width: 8),
+                        _headerPill('${_month.year}', _pickYear),
+                      ],
+                    ),
                   ),
                 ),
                 _roundButton(Icons.chevron_right_rounded, () => _shiftMonth(1)),
@@ -475,6 +485,20 @@ class _CalendarPageState extends State<CalendarPage> {
           Text('₽ выплата', style: TextStyle(fontSize: 12, color: kInkSoft)),
           const SizedBox(width: 10),
           Text('● событие', style: TextStyle(fontSize: 12, color: kInkSoft)),
+          if (ms.length == 2) ...[
+            const SizedBox(width: 10),
+            Container(
+              width: 11,
+              height: 11,
+              decoration: BoxDecoration(
+                color: kCommon,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: kBorder),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text('вместе', style: TextStyle(fontSize: 12, color: kInkSoft)),
+          ],
         ],
       ),
     );
@@ -486,6 +510,9 @@ class _CalendarPageState extends State<CalendarPage> {
     final sel = _selected.contains(ymd(d));
     final ms = s.orderedMembers;
     final weekend = d.weekday >= 6;
+    final common =
+        ms.length == 2 && s.schedule.isCommonOff(ms[0].id, ms[1].id, d);
+    final hasImportant = s.importantOn(d).isNotEmpty;
 
     void onTap() {
       if (_selected.isNotEmpty) {
@@ -539,7 +566,7 @@ class _CalendarPageState extends State<CalendarPage> {
         margin: const EdgeInsets.all(1.5),
         padding: const EdgeInsets.fromLTRB(3, 3, 3, 3),
         decoration: BoxDecoration(
-          color: sel ? kAccentSoft : kSurface,
+          color: sel ? kAccentSoft : (common ? kCommon : kSurface),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: sel ? kAccentDeep : (isToday ? kAccent : kLine),
@@ -571,26 +598,52 @@ class _CalendarPageState extends State<CalendarPage> {
                     ),
                   ),
                 ),
-                const Spacer(),
-                if (pays.isNotEmpty)
-                  const Text(
-                    '₽',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFFD97B5C),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (pays.isNotEmpty)
+                            const Text(
+                              '₽',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFFD97B5C),
+                              ),
+                            ),
+                          if (hasImportant)
+                            const Text(
+                              '★',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Color(0xFFE0A030),
+                              ),
+                            ),
+                          if (hasEvent)
+                            const Text(
+                              '●',
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: Color(0xFF8FB8E8),
+                              ),
+                            ),
+                          if (hasTodo)
+                            const Text(
+                              '✓',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Color(0xFF7DBE8B),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
-                if (hasEvent)
-                  const Text(
-                    '●',
-                    style: TextStyle(fontSize: 9, color: Color(0xFF8FB8E8)),
-                  ),
-                if (hasTodo)
-                  const Text(
-                    '✓',
-                    style: TextStyle(fontSize: 10, color: Color(0xFF7DBE8B)),
-                  ),
+                ),
               ],
             ),
             const SizedBox(height: 2),
@@ -634,10 +687,11 @@ class _CalendarPageState extends State<CalendarPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 2),
                 child: Text(
                   text,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
-                    color: kOnPastel,
+                    // на цветной плашке текст тёмный, на пустой рамке «вых» зависит от темы
+                    color: shift != null ? kOnPastel : kInkSoft,
                   ),
                 ),
               ),

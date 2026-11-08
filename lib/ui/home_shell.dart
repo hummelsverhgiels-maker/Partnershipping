@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../data/store.dart';
 import 'calendar_page.dart';
+import 'lists_page.dart';
+import 'more_page.dart';
+import 'today_page.dart';
 import 'chat_page.dart';
-import 'settings_page.dart';
-import 'shopping_page.dart';
-import 'todos_page.dart';
 
 class HomeShell extends StatefulWidget {
   final AppStore store;
@@ -22,18 +22,31 @@ class _HomeShellState extends State<HomeShell> {
   // для них хранится последняя собранная версия. Это сильно разгружает телефон.
   final Map<int, Widget> _cache = {};
 
+  static const _chatTab = 3;
+
+  void _go(int i) {
+    setState(() {
+      final old = _tab;
+      _tab = i;
+      // Покидаемая вкладка запоминается «неактивной».
+      if (_cache.containsKey(old)) {
+        _cache[old] = _page(old, widget.store, active: false);
+      }
+    });
+  }
+
   Widget _page(int i, AppStore s, {required bool active}) {
     switch (i) {
       case 0:
-        return CalendarPage(store: s);
+        return TodayPage(store: s, onOpenTab: _go);
       case 1:
-        return ShoppingPage(store: s);
+        return CalendarPage(store: s);
       case 2:
-        return TodosPage(store: s);
-      case 3:
+        return ListsPage(store: s);
+      case _chatTab:
         return ChatPage(store: s, active: active);
       default:
-        return SettingsPage(store: s);
+        return MorePage(store: s);
     }
   }
 
@@ -57,32 +70,25 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   Widget _nav(AppStore s) {
-    final unread = _tab == 3 ? 0 : s.unreadChat;
+    final unread = _tab == _chatTab ? 0 : s.unreadChat;
     return NavigationBar(
       selectedIndex: _tab,
-      onDestinationSelected: (i) => setState(() {
-        final old = _tab;
-        _tab = i;
-        // Покидаемая вкладка запоминается «неактивной».
-        if (_cache.containsKey(old)) {
-          _cache[old] = _page(old, widget.store, active: false);
-        }
-      }),
+      onDestinationSelected: _go,
       destinations: [
-        NavigationDestination(
+        const NavigationDestination(
+          icon: Icon(Icons.wb_sunny_outlined),
+          selectedIcon: Icon(Icons.wb_sunny_rounded),
+          label: 'Сегодня',
+        ),
+        const NavigationDestination(
           icon: Icon(Icons.calendar_month_outlined),
           selectedIcon: Icon(Icons.calendar_month),
           label: 'Календарь',
         ),
-        NavigationDestination(
-          icon: Icon(Icons.shopping_basket_outlined),
-          selectedIcon: Icon(Icons.shopping_basket),
-          label: 'Покупки',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.checklist_rtl),
-          selectedIcon: Icon(Icons.checklist_rtl),
-          label: 'Дела',
+        const NavigationDestination(
+          icon: Icon(Icons.checklist_rtl_rounded),
+          selectedIcon: Icon(Icons.checklist_rtl_rounded),
+          label: 'Списки',
         ),
         NavigationDestination(
           icon: Badge(
@@ -93,10 +99,10 @@ class _HomeShellState extends State<HomeShell> {
           selectedIcon: const Icon(Icons.chat_bubble),
           label: 'Чат',
         ),
-        NavigationDestination(
-          icon: Icon(Icons.settings_outlined),
-          selectedIcon: Icon(Icons.settings),
-          label: 'Настройки',
+        const NavigationDestination(
+          icon: Icon(Icons.grid_view_rounded),
+          selectedIcon: Icon(Icons.grid_view_rounded),
+          label: 'Ещё',
         ),
       ],
     );

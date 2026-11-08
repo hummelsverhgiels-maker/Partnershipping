@@ -7,7 +7,8 @@ import 'theme.dart';
 
 class ShoppingPage extends StatefulWidget {
   final AppStore store;
-  const ShoppingPage({super.key, required this.store});
+  final bool embedded; // внутри вкладки «Списки»: без своей шапки
+  const ShoppingPage({super.key, required this.store, this.embedded = false});
 
   @override
   State<ShoppingPage> createState() => _ShoppingPageState();
@@ -38,30 +39,37 @@ class _ShoppingPageState extends State<ShoppingPage> {
   Widget build(BuildContext context) {
     final todo = s.shopping.where((r) => !r.b('bought')).toList();
     final bought = s.shopping.where((r) => r.b('bought')).toList();
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Покупки'),
-        actions: [
-          if (bought.isNotEmpty)
-            TextButton.icon(
-              onPressed: () async {
-                if (await confirm(
-                  context,
-                  'Удалить ${bought.length} купленных из списка?',
-                  yes: 'Очистить',
-                )) {
-                  for (final r in bought) {
-                    s.remove(r.id);
-                  }
+    final clearBtn = bought.isEmpty
+        ? const SizedBox.shrink()
+        : TextButton.icon(
+            onPressed: () async {
+              if (await confirm(
+                context,
+                'Удалить ${bought.length} купленных из списка?',
+                yes: 'Очистить',
+              )) {
+                for (final r in bought) {
+                  s.remove(r.id);
                 }
-              },
-              icon: const Icon(Icons.cleaning_services_outlined),
-              label: const Text('Очистить'),
-            ),
-        ],
-      ),
+              }
+            },
+            icon: const Icon(Icons.cleaning_services_outlined),
+            label: const Text('Очистить'),
+          );
+    return Scaffold(
+      appBar: widget.embedded
+          ? null
+          : AppBar(title: const Text('Покупки'), actions: [clearBtn]),
       body: Column(
         children: [
+          if (widget.embedded && bought.isNotEmpty)
+            Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: clearBtn,
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
             child: Row(

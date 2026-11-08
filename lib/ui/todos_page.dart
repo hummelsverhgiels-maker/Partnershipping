@@ -9,7 +9,8 @@ import 'theme.dart';
 
 class TodosPage extends StatelessWidget {
   final AppStore store;
-  const TodosPage({super.key, required this.store});
+  final bool embedded; // внутри вкладки «Списки»: без своей шапки
+  const TodosPage({super.key, required this.store, this.embedded = false});
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +46,7 @@ class TodosPage extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Дела')),
+      appBar: embedded ? null : AppBar(title: const Text('Дела')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => showTodoSheet(context, store),
         backgroundColor: const Color(0xFFE58E70),

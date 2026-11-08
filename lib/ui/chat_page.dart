@@ -28,6 +28,7 @@ class _ChatPageState extends State<ChatPage> {
 
   int _tab = 0; // 0 чат, 1 важное, 2 фото и видео, 3 файлы
   bool _hasText = false;
+  Rec? _reply; // сообщение, на которое отвечаем
   bool _recording = false;
   bool _uploading = false;
   int _recSeconds = 0;
@@ -66,9 +67,22 @@ class _ChatPageState extends State<ChatPage> {
   void _send() {
     final t = _ctrl.text;
     if (t.trim().isEmpty) return;
-    s.sendMessage(t);
+    s.sendMessage(t, replyTo: _reply);
+    setState(() => _reply = null);
     _ctrl.clear();
     _focus.requestFocus();
+  }
+
+  String _snippet(Rec m) {
+    final t = m.s('text');
+    if (t != null && t.isNotEmpty) return t;
+    return switch (m.s('type')) {
+      'image' => '📷 Фото',
+      'video' => '🎥 Видео',
+      'audio' => '🎤 Голосовое',
+      'file' => '📎 ${m.s('name') ?? 'Файл'}',
+      _ => 'Сообщение',
+    };
   }
 
   bool _needPair() {
@@ -95,7 +109,9 @@ class _ChatPageState extends State<ChatPage> {
         name: m.name,
         size: m.bytes.length,
         durationMs: m.durationMs,
+        replyTo: _reply,
       );
+      if (mounted) setState(() => _reply = null);
     } catch (e) {
       if (mounted) {
         final details = e is String ? e : e.toString();
@@ -234,6 +250,46 @@ class _ChatPageState extends State<ChatPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  for (final e in const ['👍', '❤️', '😂', '😮', '😢', '🙏'])
+                    PressScale(
+                      scale: 0.85,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        s.toggleReaction(m, e);
+                      },
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color:
+                              ((m.data['reactions']
+                                      as Map?)?[s.session?.memberId] ==
+                                  e)
+                              ? kAccentSoft
+                              : kField,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(e, style: const TextStyle(fontSize: 24)),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.reply_rounded),
+              title: const Text('Ответить'),
+              onTap: () {
+                Navigator.pop(ctx);
+                setState(() => _reply = m);
+                _focus.requestFocus();
+              },
+            ),
             ListTile(
               leading: Icon(
                 m.b('important')
@@ -374,6 +430,33 @@ class _ChatPageState extends State<ChatPage> {
               ),
             ),
           Expanded(child: _tabBody()),
+          if (_tab == 0 && _reply != null)
+            Container(
+              margin: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+              padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
+              decoration: BoxDecoration(
+                color: kAccentSoft,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.reply_rounded, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Ответ: ${_snippet(_reply!)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => setState(() => _reply = null),
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                  ),
+                ],
+              ),
+            ),
           if (_tab == 0) _inputBar(),
         ],
       ),
@@ -533,6 +616,41 @@ class _ChatPageState extends State<ChatPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (m.s('replyText') != null)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+                  decoration: BoxDecoration(
+                    color: fg.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border(
+                      left: BorderSide(
+                        color: fg.withValues(alpha: 0.5),
+                        width: 3,
+                      ),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if ((m.s('replyName') ?? '').isNotEmpty)
+                        Text(
+                          m.s('replyName')!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: fg,
+                          ),
+                        ),
+                      Text(
+                        m.s('replyText')!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 13, color: fgSoft),
+                      ),
+                    ],
+                  ),
+                ),
               content,
               if (type != 'text' && text != null && text.isNotEmpty)
                 Padding(
@@ -555,6 +673,24 @@ class _ChatPageState extends State<ChatPage> {
                   Text(_hm(ts), style: TextStyle(fontSize: 11, color: fgSoft)),
                 ],
               ),
+              if (((m.data['reactions'] as Map?)?.isNotEmpty ?? false))
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: fg.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      (m.data['reactions'] as Map).values.join(' '),
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

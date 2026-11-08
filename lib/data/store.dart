@@ -55,6 +55,10 @@ class AppStore extends ChangeNotifier {
   List<Rec> todos = [];
   List<Rec> templates = [];
   List<Rec> messages = [];
+  List<Rec> importantDates = [];
+  List<Rec> expenses = [];
+  List<Rec> goals = [];
+  List<Rec> wishes = [];
 
   bool get hasSession => session != null;
   bool get isLocal => session?.local ?? true;
@@ -292,14 +296,28 @@ class AppStore extends ChangeNotifier {
     final beforeOnline = online;
     try {
       while (_outbox.isNotEmpty) {
-        final op = _outbox.first;
-        if (op.isDelete) {
-          await Backend.deleteRecord(op.id);
-        } else {
-          await Backend.upsertRecord(s.pairId, op.rec!);
+        // Берём подряд идущие однотипные операции и отправляем одним запросом.
+        final first = _outbox.first;
+        var n = 1;
+        while (n < _outbox.length &&
+            n < 100 &&
+            _outbox[n].isDelete == first.isDelete) {
+          n++;
         }
-        _outbox.removeAt(0);
-        _grace.add((op, DateTime.now()));
+        final batch = _outbox.sublist(0, n);
+        if (first.isDelete) {
+          await Backend.deleteRecords(batch.map((o) => o.id).toList());
+        } else {
+          await Backend.upsertRecords(
+            s.pairId,
+            batch.map((o) => o.rec!).toList(),
+          );
+        }
+        _outbox.removeRange(0, n);
+        final now = DateTime.now();
+        for (final op in batch) {
+          _grace.add((op, now));
+        }
         await _saveOutbox();
       }
       online = true;
@@ -356,10 +374,15 @@ class AppStore extends ChangeNotifier {
         }
         final old = _recs[rec.id];
         if (old != null && !rec.updatedAt.isAfter(old.updatedAt)) continue;
-        if (rec.kind == 'message' &&
-            rec.s('from') != null &&
-            rec.s('from') != rec.updatedBy) {
-          continue; // партнёр лишь поменял пометку «важное»
+        if (rec.kind == 'message') {
+          final edited = rec.i('editedAt');
+          final recentEdit =
+              edited != null &&
+              DateTime.now().millisecondsSinceEpoch - edited < 120000;
+          if (recentEdit ||
+              (rec.s('from') != null && rec.s('from') != rec.updatedBy)) {
+            continue; // правка (важное, реакция), а не новое сообщение
+          }
         }
         final c = _category(rec.kind);
         if (c != null) cats.add(c);
@@ -441,7 +464,29 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  void sendMessage(String text) {
+  Map<String, dynamic> _replyData(Rec? replyTo) {
+    if (replyTo == null) return const {};
+    final t = replyTo.s('text');
+    final type = replyTo.s('type') ?? 'text';
+    final snippet = (t != null && t.isNotEmpty)
+        ? t
+        : switch (type) {
+            'image' => '📷 Фото',
+            'video' => '🎥 Видео',
+            'audio' => '🎤 Голосовое',
+            'file' => '📎 ${replyTo.s('name') ?? 'Файл'}',
+            _ => 'Сообщение',
+          };
+    return {
+      'replyTo': replyTo.id,
+      'replyName': memberById(authorOf(replyTo))?.name ?? '',
+      'replyText': snippet.length > 90
+          ? '${snippet.substring(0, 90)}…'
+          : snippet,
+    };
+  }
+
+  void sendMessage(String text, {Rec? replyTo}) {
     final t = text.trim();
     if (t.isEmpty) return;
     upsert('message', {
@@ -449,6 +494,7 @@ class AppStore extends ChangeNotifier {
       'text': t,
       'from': session?.memberId,
       'ts': DateTime.now().millisecondsSinceEpoch,
+      ..._replyData(replyTo),
     });
   }
 
@@ -460,6 +506,7 @@ class AppStore extends ChangeNotifier {
     required int size,
     int? durationMs,
     String? caption,
+    Rec? replyTo,
   }) {
     upsert('message', {
       'type': type,
@@ -470,12 +517,37 @@ class AppStore extends ChangeNotifier {
       if (caption != null && caption.trim().isNotEmpty) 'text': caption.trim(),
       'from': session?.memberId,
       'ts': DateTime.now().millisecondsSinceEpoch,
+      ..._replyData(replyTo),
     });
   }
 
   /// Пометить сообщение «важным» (и обратно).
+  /// editedAt нужен, чтобы правка не считалась новым сообщением (уведомления).
   void toggleImportant(Rec m) {
-    upsert('message', {...m.data, 'important': !m.b('important')}, id: m.id);
+    upsert('message', {
+      ...m.data,
+      'important': !m.b('important'),
+      'editedAt': DateTime.now().millisecondsSinceEpoch,
+    }, id: m.id);
+  }
+
+  /// Реакция эмодзи: повторное нажатие на ту же реакцию снимает её.
+  void toggleReaction(Rec m, String emoji) {
+    final meId = session?.memberId;
+    if (meId == null) return;
+    final cur = <String, dynamic>{
+      ...Map<String, dynamic>.from((m.data['reactions'] as Map?) ?? const {}),
+    };
+    if (cur[meId] == emoji) {
+      cur.remove(meId);
+    } else {
+      cur[meId] = emoji;
+    }
+    upsert('message', {
+      ...m.data,
+      'reactions': cur,
+      'editedAt': DateTime.now().millisecondsSinceEpoch,
+    }, id: m.id);
   }
 
   /// Удалить сообщение (и файл на сервере, если он есть).
@@ -618,15 +690,105 @@ class AppStore extends ChangeNotifier {
   // ------------------------------------------------------ выплаты
   bool shiftPayFor(String memberId) => schedule.shiftPay[memberId] ?? false;
 
-  void setShiftPay(String memberId, bool value) {
-    Rec? existing;
+  Rec? _prefsRec(String memberId) {
     for (final r in _recs.values) {
-      if (r.kind == 'prefs' && r.s('memberId') == memberId) existing = r;
+      if (r.kind == 'prefs' && r.s('memberId') == memberId) return r;
     }
+    return null;
+  }
+
+  void setShiftPay(String memberId, bool value) {
+    final existing = _prefsRec(memberId);
     upsert('prefs', {
+      ...?existing?.data,
       'memberId': memberId,
       'shiftPay': value,
     }, id: existing?.id);
+  }
+
+  /// Ставка за час (₽). 0 — не задана.
+  double hourRateFor(String memberId) =>
+      (_prefsRec(memberId)?.data['hourRate'] as num?)?.toDouble() ?? 0;
+
+  void setHourRate(String memberId, double rate) {
+    final existing = _prefsRec(memberId);
+    upsert('prefs', {
+      ...?existing?.data,
+      'memberId': memberId,
+      'hourRate': rate,
+    }, id: existing?.id);
+  }
+
+  /// График по шаблону: смены на рабочие дни (и, если нужно, явные «выходные»).
+  void applyPattern({
+    required String memberId,
+    required List<DateTime> workDays,
+    required List<DateTime> offDays,
+    required String start,
+    required String end,
+    required bool markOff,
+    required bool clearOff,
+  }) {
+    for (final d in workDays) {
+      _clearDay(memberId, ymd(d));
+    }
+    if (markOff) {
+      for (final d in offDays) {
+        _clearDay(memberId, ymd(d));
+      }
+    } else if (clearOff) {
+      for (final d in offDays) {
+        _clearDay(memberId, ymd(d));
+      }
+    }
+    for (final d in workDays) {
+      final rec = Rec(
+        id: newId(),
+        kind: 'shift',
+        data: {
+          'memberId': memberId,
+          'date': ymd(d),
+          'start': start,
+          'end': end,
+        },
+        updatedBy: session?.memberId,
+        updatedAt: DateTime.now(),
+      );
+      _recs[rec.id] = rec;
+      _outbox.add(_Op.upsert(rec));
+    }
+    if (markOff) {
+      for (final d in offDays) {
+        final rec = Rec(
+          id: newId(),
+          kind: 'dayoff',
+          data: {'memberId': memberId, 'date': ymd(d)},
+          updatedBy: session?.memberId,
+          updatedAt: DateTime.now(),
+        );
+        _recs[rec.id] = rec;
+        _outbox.add(_Op.upsert(rec));
+      }
+    }
+    _afterLocalChange();
+  }
+
+  /// Важные даты, приходящиеся на этот день (ежегодные учитываются по числу и месяцу).
+  List<Rec> importantOn(DateTime d) {
+    final out = <Rec>[];
+    for (final r in importantDates) {
+      final ds = r.s('date');
+      if (ds == null) continue;
+      final o = parseYmd(ds);
+      if (r.b('yearly')) {
+        final dim = daysInMonth(d.year, o.month);
+        final day = o.day > dim ? dim : o.day;
+        if (d.month == o.month && d.day == day) out.add(r);
+      } else if (o.year == d.year && o.month == d.month && o.day == d.day) {
+        out.add(r);
+      }
+    }
+    return out;
   }
 
   // -------------------------------------------------- производные
@@ -641,6 +803,11 @@ class AppStore extends ChangeNotifier {
     final td = <Rec>[];
     final tp = <Rec>[];
     final msgs = <Rec>[];
+    final imp = <Rec>[];
+    final exp = <Rec>[];
+    final gl = <Rec>[];
+    final wi = <Rec>[];
+    final dm = <String>{};
     for (final r in _recs.values) {
       switch (r.kind) {
         case 'shift':
@@ -650,11 +817,15 @@ class AppStore extends ChangeNotifier {
           final e = r.s('end');
           if (m != null && d != null && s != null && e != null) {
             (shifts[d] ??= {})[m] = ShiftInfo(r.id, s, e);
+            dm.add('$m|${d.substring(0, 7)}');
           }
         case 'dayoff':
           final m = r.s('memberId');
           final d = r.s('date');
-          if (m != null && d != null) offs.add('$m|$d');
+          if (m != null && d != null) {
+            offs.add('$m|$d');
+            dm.add('$m|${d.substring(0, 7)}');
+          }
         case 'payrule':
           final m = r.s('memberId');
           final day = r.i('day');
@@ -680,6 +851,14 @@ class AppStore extends ChangeNotifier {
           tp.add(r);
         case 'message':
           msgs.add(r);
+        case 'important':
+          imp.add(r);
+        case 'expense':
+          exp.add(r);
+        case 'goal':
+          gl.add(r);
+        case 'wish':
+          wi.add(r);
       }
     }
     // Если смена и «выходной» вдруг оба есть (две правки одновременно) — побеждает смена.
@@ -689,6 +868,7 @@ class AppStore extends ChangeNotifier {
       rules: rules,
       payDates: pdates,
       shiftPay: shiftPay,
+      dataMonths: dm,
     );
     ev.sort((a, b) {
       final c = (a.s('date') ?? '').compareTo(b.s('date') ?? '');
@@ -699,6 +879,17 @@ class AppStore extends ChangeNotifier {
     tp.sort((a, b) => (a.s('start') ?? '').compareTo(b.s('start') ?? ''));
     msgs.sort((a, b) => (a.i('ts') ?? 0).compareTo(b.i('ts') ?? 0));
     messages = msgs;
+    imp.sort((a, b) => (a.s('date') ?? '').compareTo(b.s('date') ?? ''));
+    exp.sort((a, b) {
+      final c = (b.s('date') ?? '').compareTo(a.s('date') ?? '');
+      return c != 0 ? c : b.updatedAt.compareTo(a.updatedAt);
+    });
+    gl.sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
+    wi.sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
+    importantDates = imp;
+    expenses = exp;
+    goals = gl;
+    wishes = wi;
     events = ev;
     shopping = sh;
     todos = td;

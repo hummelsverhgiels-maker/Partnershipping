@@ -190,6 +190,25 @@ class Backend {
     });
   }
 
+  static Future<void> upsertRecords(String pairId, List<Rec> recs) async {
+    if (recs.isEmpty) return;
+    await client.from('records').upsert([
+      for (final r in recs)
+        {
+          'id': r.id,
+          'pair_id': pairId,
+          'kind': r.kind,
+          'data': r.data,
+          'updated_by': r.updatedBy,
+        },
+    ]);
+  }
+
+  static Future<void> deleteRecords(List<String> ids) async {
+    if (ids.isEmpty) return;
+    await client.from('records').delete().inFilter('id', ids);
+  }
+
   static Future<void> deleteRecord(String id) async {
     await client.from('records').delete().eq('id', id);
   }

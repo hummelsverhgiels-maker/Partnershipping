@@ -84,9 +84,13 @@ Deno.serve(async (req) => {
     if (body?.table !== "records" || !incoming?.id) return new Response("ignored");
     const cat = categoryOf(String(incoming.kind));
     if (!cat) return new Response("ignored kind");
-    // Партнёр лишь поставил или снял пометку «важное» у чужого сообщения: не уведомляем.
-    if (incoming.kind === "message" && incoming.data?.from && incoming.data.from !== incoming.updated_by) {
-      return new Response("flag change");
+    // Правка сообщения (пометка «важное», реакция): это не новое сообщение, не уведомляем.
+    if (incoming.kind === "message") {
+      const edited = Number(incoming.data?.editedAt ?? 0);
+      if (edited && Date.now() - edited < 120000) return new Response("edit");
+      if (incoming.data?.from && incoming.data.from !== incoming.updated_by) {
+        return new Response("flag change");
+      }
     }
 
     // Текст берём из базы, а не из присланного запроса.

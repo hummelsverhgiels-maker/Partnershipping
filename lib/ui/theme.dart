@@ -25,7 +25,8 @@ class _Palette {
       hero2,
       outMonth,
       faint,
-      placeholder;
+      placeholder,
+      common;
   const _Palette({
     required this.bg,
     required this.bgTop,
@@ -45,6 +46,7 @@ class _Palette {
     required this.outMonth,
     required this.faint,
     required this.placeholder,
+    required this.common,
   });
 }
 
@@ -67,6 +69,7 @@ const _light = _Palette(
   outMonth: Color(0xFFFFFCFA),
   faint: Color(0xFFD3C8C1),
   placeholder: Color(0xFFF1E6DF),
+  common: Color(0xFFFFE3EA),
 );
 
 const _dark = _Palette(
@@ -88,6 +91,7 @@ const _dark = _Palette(
   outMonth: Color(0xFF211A18),
   faint: Color(0xFF5E514B),
   placeholder: Color(0xFF3A302C),
+  common: Color(0xFF45283A),
 );
 
 // Текущие цвета. Меняются при смене темы (см. applyPalette).
@@ -110,6 +114,7 @@ Color kHero2 = _light.hero2;
 Color kOutMonth = _light.outMonth;
 Color kFaint = _light.faint;
 Color kPlaceholder = _light.placeholder;
+Color kCommon = _light.common;
 
 void applyPalette(bool dark) {
   final p = dark ? _dark : _light;
@@ -132,6 +137,7 @@ void applyPalette(bool dark) {
   kOutMonth = p.outMonth;
   kFaint = p.faint;
   kPlaceholder = p.placeholder;
+  kCommon = p.common;
 }
 
 /// Пастельные цвета для участников.

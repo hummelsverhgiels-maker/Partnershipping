@@ -55,13 +55,27 @@ class Schedule {
   /// человек -> сдвигать ли выплату с выходного на предыдущий рабочий день
   final Map<String, bool> shiftPay;
 
+  /// «человек|yyyy-MM»: в этом месяце у человека есть смены или отметки «выходной»
+  final Set<String> dataMonths;
+
   const Schedule({
     this.shifts = const {},
     this.offMarks = const {},
     this.rules = const [],
     this.payDates = const [],
     this.shiftPay = const {},
+    this.dataMonths = const {},
   });
+
+  static String monthKey(String memberId, DateTime d) =>
+      '$memberId|${d.year}-${d.month.toString().padLeft(2, '0')}';
+
+  /// Общий выходной: свободны оба, и у обоих на этот месяц график уже заполнен.
+  bool isCommonOff(String a, String b, DateTime d) =>
+      isOff(a, d) &&
+      isOff(b, d) &&
+      dataMonths.contains(monthKey(a, d)) &&
+      dataMonths.contains(monthKey(b, d));
 
   ShiftInfo? shiftOf(String memberId, DateTime d) => shifts[ymd(d)]?[memberId];
 
