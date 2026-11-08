@@ -37,6 +37,12 @@ jobs:
           cp -R build/ios/iphoneos/Runner.app Payload/Runner.app
           zip -qr partnershipping-unsigned.ipa Payload
 
+      - name: Проверить, что виджет внутри приложения
+        run: |
+          ls -la Payload/Runner.app/PlugIns
+          test -d Payload/Runner.app/PlugIns/DaysOffWidget.appex
+          unzip -l partnershipping-unsigned.ipa | grep -i "appex/" | head -5
+
       - name: Сохранить IPA в Artifacts
         uses: actions/upload-artifact@v4
         with:
