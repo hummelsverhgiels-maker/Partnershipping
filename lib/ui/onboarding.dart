@@ -328,23 +328,53 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ),
   ];
 
+  Future<void> _confirmClaim(Member m) async {
+    final ok = await confirm(
+      context,
+      'Вы точно «${m.name}»?\n\n'
+      'Выбирайте это, только если вы уже были в паре под этим именем '
+      'и переустановили приложение. Если вы другой человек, '
+      'у «${m.name}» пропадёт доступ.',
+      yes: 'Да, это я',
+      no: 'Нет',
+    );
+    if (ok) await _claim(m);
+  }
+
   List<Widget> _foundList() {
     final f = _found!;
     final canJoin = f.members.length < 2;
     return [
-      const SectionTitle('Это вы уже были в паре?'),
+      if (canJoin) ...[
+        const SectionTitle('Вы подключаетесь к паре впервые?'),
+        FilledButton(
+          onPressed: _busy ? null : _join,
+          child: Text('Я новый участник: ${_name.text.trim()}'),
+        ),
+        const SizedBox(height: 6),
+      ] else
+        const Padding(
+          padding: EdgeInsets.only(top: 6),
+          child: Text(
+            'В паре уже двое. Если вы переустановили приложение, выберите себя ниже.',
+            style: TextStyle(color: kInkSoft),
+          ),
+        ),
+      const SectionTitle(
+        'ИЛИ: Я уже был(а) в паре и переустановил(а) приложение',
+      ),
       for (final m in f.members) ...[
         SoftCard(
-          onTap: _busy ? null : () => _claim(m),
+          onTap: _busy ? null : () => _confirmClaim(m),
           child: Row(
             children: [
               ColorDot(m.color, size: 28),
               const SizedBox(width: 14),
               Expanded(
                 child: Text(
-                  'Я — ${m.name}',
+                  'Вернуться как «${m.name}»',
                   style: const TextStyle(
-                    fontSize: 17,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -355,20 +385,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
         const SizedBox(height: 10),
       ],
-      if (canJoin) ...[
-        const SizedBox(height: 6),
-        FilledButton(
-          onPressed: _busy ? null : _join,
-          child: Text('Я новый участник: ${_name.text.trim()}'),
-        ),
-      ] else
-        const Padding(
-          padding: EdgeInsets.only(top: 6),
-          child: Text(
-            'В паре уже двое — выберите, кто вы.',
-            style: TextStyle(color: kInkSoft),
-          ),
-        ),
     ];
   }
 }
