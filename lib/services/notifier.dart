@@ -135,6 +135,25 @@ class Notifier {
     }
   }
 
+  static Future<void> showKiss(String who, int count) async {
+    if (!_ready) return;
+    try {
+      await _plugin.show(
+        id: 3,
+        title: '$who 💋',
+        body: count > 1
+            ? 'Прислал(а) тебе поцелуйчики (+$count)'
+            : 'Прислал(а) тебе поцелуйчик',
+        notificationDetails: const NotificationDetails(
+          android: _partnerChannel,
+          iOS: DarwinNotificationDetails(),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Уведомление не показано: $e');
+    }
+  }
+
   static Future<void> showPartnerChange(
     String who,
     Set<String> cats, {

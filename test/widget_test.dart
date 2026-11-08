@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:partnershipping/data/store.dart';
@@ -26,7 +27,7 @@ void main() {
     await tester.pump();
     // Первая вкладка — «Сегодня»; смены видны в календаре.
     expect(find.text('Сегодня'), findsWidgets);
-    await tester.tap(find.text('Календарь').last);
+    await tester.tap(find.byKey(const ValueKey('tab-Календарь')));
     await tester.pumpAndSettle();
     final now = DateTime.now();
     store.setShift(

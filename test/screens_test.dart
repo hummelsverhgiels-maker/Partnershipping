@@ -7,6 +7,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:partnershipping/data/store.dart';
 import 'package:partnershipping/logic/pattern.dart';
 import 'package:partnershipping/main.dart';
+import 'package:partnershipping/ui/feed_page.dart';
 import 'package:partnershipping/ui/theme_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -134,10 +135,7 @@ void main() {
         await _settle(tester);
         expect(tester.takeException(), isNull);
 
-        Finder nav(String label) => find.descendant(
-          of: find.byKey(const ValueKey('bottom-bar')),
-          matching: find.text(label),
-        );
+        Finder nav(String label) => find.byKey(ValueKey('tab-$label'));
 
         // «Сегодня»
         expect(
@@ -195,12 +193,32 @@ void main() {
         }
         expect(tester.takeException(), isNull);
 
+        // Поцелуи: тап по кнопке увеличивает счётчик
+        await tester.tap(nav('Поцелуи'));
+        await _settle(tester);
+        final kissesBefore = store.kissTotalOf(store.session!.memberId);
+        for (var i = 0; i < 3; i++) {
+          await tester.tap(find.byKey(const ValueKey('kiss-button')));
+          await tester.pump(const Duration(milliseconds: 120));
+        }
+        await tester.pump(
+          const Duration(milliseconds: 1200),
+        ); // пачка уходит через секунду
+        expect(store.kissTotalOf(store.session!.memberId), kissesBefore + 3);
+        await tester.pump(const Duration(seconds: 3)); // частицы улетели
+        expect(tester.takeException(), isNull);
+
         // Лента: публикация, лайк, комментарии
         await tester.tap(nav('Лента'));
         await _settle(tester);
         expect(find.text('Первая публикация'), findsOneWidget);
         expect(tester.takeException(), isNull);
-        await tester.tap(find.byIcon(Icons.favorite_border_rounded));
+        await tester.tap(
+          find.descendant(
+            of: find.byType(PostCard),
+            matching: find.byIcon(Icons.favorite_border_rounded),
+          ),
+        );
         await _settle(tester);
         expect(store.postLikedByMe(store.posts.first), true);
         await tester.tap(find.byIcon(Icons.chat_bubble_outline_rounded));

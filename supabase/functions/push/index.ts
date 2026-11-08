@@ -68,6 +68,7 @@ function categoryOf(kind: string): string | null {
     case "todo": return "todo";
     case "post": return "feed";
     case "doc": return "docs";
+    case "kiss": return "kiss";
   }
   return null;
 }
@@ -133,6 +134,9 @@ Deno.serve(async (req) => {
       else if (t === "audio") text = "🎤 Голосовое сообщение";
       else if (t === "file") text = "📎 " + String(row.data?.name ?? "Файл");
       else text = caption || "Новое сообщение";
+    } else if (cat === "kiss") {
+      title = `${name} 💋`;
+      text = "Прислал(а) тебе поцелуйчики";
     } else {
       title = `${name} внёс(ла) изменения`;
       text = `Обновлено: ${CATEGORY_TEXT[cat]}`;

@@ -45,6 +45,11 @@ class AppStore extends ChangeNotifier {
   Timer? _timer;
   bool _flushing = false;
 
+  /// Вызывается, когда партнёру прислали или ему прислали поцелуи (delta штук).
+  void Function(String who, int delta)? onKissReceived;
+  final StreamController<int> _kissCtl = StreamController<int>.broadcast();
+  Stream<int> get kissReceived => _kissCtl.stream;
+
   /// Вызывается, когда партнёр что-то изменил (категория: schedule, shopping, todo, event).
   void Function(String who, Set<String> categories)? onPartnerChange;
 
@@ -64,6 +69,7 @@ class AppStore extends ChangeNotifier {
   List<Rec> docs = [];
   Map<String, Rec> moods = {}; // memberId -> запись настроения
   Map<String, int> seenTs = {}; // memberId -> до какого сообщения прочитан чат
+  Map<String, Rec> kisses = {}; // memberId -> счётчик поцелуев
 
   bool get hasSession => session != null;
   bool get isLocal => session?.local ?? true;
@@ -397,11 +403,22 @@ class AppStore extends ChangeNotifier {
       }
     }
     final same = _sameRecs(_recs, next);
+    final firstSync =
+        !_synced; // первая загрузка: старые поцелуи не «прилетают» заново
     _synced = true;
     if (same) return; // ничего не изменилось: не перерисовываем экран
+    final partnerId = partner?.id;
+    final oldKisses = partnerId == null ? 0 : kissTotalOf(partnerId);
     _recs = next;
     _rebuild();
     _saveRecs();
+    if (partnerId != null) {
+      final delta = kissTotalOf(partnerId) - oldKisses;
+      if (delta > 0 && !firstSync) {
+        _kissCtl.add(delta);
+        onKissReceived?.call(partner?.name ?? 'Партнёр', delta);
+      }
+    }
     notifyListeners();
   }
 
@@ -610,6 +627,47 @@ class AppStore extends ChangeNotifier {
     } catch (e) {
       debugPrint('Устройство не зарегистрировано: $e');
     }
+  }
+
+  // ------------------------------------------------------------ поцелуйчики
+  int kissTotalOf(String memberId) => kisses[memberId]?.i('total') ?? 0;
+
+  int kissTodayOf(String memberId) {
+    final r = kisses[memberId];
+    if (r == null) return 0;
+    return r.s('day') == ymd(DateTime.now()) ? (r.i('today') ?? 0) : 0;
+  }
+
+  /// Отправить [delta] поцелуев партнёру (копится в одном счётчике).
+  void sendKisses(int delta) {
+    final meId = session?.memberId;
+    if (meId == null || delta <= 0) return;
+    final existing = kisses[meId];
+    final day = ymd(DateTime.now());
+    final today =
+        (existing?.s('day') == day ? (existing?.i('today') ?? 0) : 0) + delta;
+    upsert('kiss', {
+      'memberId': meId,
+      'total': (existing?.i('total') ?? 0) + delta,
+      'today': today,
+      'day': day,
+      'ts': DateTime.now().millisecondsSinceEpoch,
+    }, id: existing?.id);
+  }
+
+  /// Сколько поцелуев партнёр прислал, а вы ещё не видели.
+  int get kissUnseen {
+    final p = partner;
+    if (p == null) return 0;
+    final d = kissTotalOf(p.id) - (_prefs?.getInt('kiss_seen') ?? 0);
+    return d < 0 ? 0 : d;
+  }
+
+  Future<void> markKissesSeen() async {
+    final p = partner;
+    if (p == null) return;
+    await _prefs?.setInt('kiss_seen', kissTotalOf(p.id));
+    notifyListeners();
   }
 
   // ----------------------------------------------------------- настроение
@@ -977,6 +1035,7 @@ class AppStore extends ChangeNotifier {
     final dc = <Rec>[];
     final mo = <String, Rec>{};
     final se = <String, int>{};
+    final ki = <String, Rec>{};
     for (final r in _recs.values) {
       switch (r.kind) {
         case 'shift':
@@ -1038,6 +1097,9 @@ class AppStore extends ChangeNotifier {
         case 'mood':
           final mid = r.s('memberId');
           if (mid != null) mo[mid] = r;
+        case 'kiss':
+          final kid = r.s('memberId');
+          if (kid != null) ki[kid] = r;
         case 'seen':
           final mid = r.s('memberId');
           if (mid != null) se[mid] = r.i('ts') ?? 0;
@@ -1082,6 +1144,7 @@ class AppStore extends ChangeNotifier {
     docs = dc;
     moods = mo;
     seenTs = se;
+    kisses = ki;
     events = ev;
     shopping = sh;
     todos = td;

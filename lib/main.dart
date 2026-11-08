@@ -56,6 +56,17 @@ class _PartnershippingAppState extends State<PartnershippingApp>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     widget.store.addListener(_onChanged);
+    widget.store.onKissReceived = (who, delta) {
+      // Если включены мгновенные уведомления, их присылает сервер.
+      if (PushService.active) return;
+      // Когда приложение открыто, поцелуйчики и так видны на экране.
+      if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+        return;
+      }
+      if (widget.store.getFlag('notif_partner')) {
+        Notifier.showKiss(who, delta);
+      }
+    };
     widget.store.onPartnerChange = (who, cats) {
       // Если включены мгновенные уведомления (Firebase), их присылает сервер.
       if (PushService.active) return;
