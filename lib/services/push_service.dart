@@ -10,7 +10,15 @@ import '../firebase_config.dart';
 /// Мгновенные уведомления через Firebase Cloud Messaging.
 /// Android: обычные пуши. Веб-версия на iPhone: веб-пуши (нужен iOS 16.4+ и иконка на «Домой»).
 class PushService {
-  static bool active = false;
+  static bool _active = false;
+  static final ValueNotifier<bool> activeNotifier = ValueNotifier(false);
+
+  static bool get active => _active;
+  static set active(bool v) {
+    _active = v;
+    activeNotifier.value = v;
+  }
+
   static String? _lastKey;
 
   static String get platform => kIsWeb ? 'web' : 'android';

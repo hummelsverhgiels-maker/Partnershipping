@@ -259,22 +259,33 @@ class SettingsPage extends StatelessWidget {
           SoftCard(
             child: Column(
               children: [
-                if (PushService.active && kIsWeb)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        final ok = await PushService.requestPermission(store);
-                        if (context.mounted) {
-                          toast(
-                            context,
-                            ok ? 'Мгновенные уведомления включены' : 'Не получилось. Разрешите уведомления в настройках iPhone',
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.notifications_active_outlined),
-                      label: const Text('Включить мгновенные уведомления'),
-                    ),
+                if (kIsWeb)
+                  ValueListenableBuilder<bool>(
+                    valueListenable: PushService.activeNotifier,
+                    builder: (context, active, _) => !active
+                        ? const SizedBox.shrink()
+                        : Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                final ok = await PushService.requestPermission(
+                                  store,
+                                );
+                                if (context.mounted) {
+                                  toast(
+                                    context,
+                                    ok ? 'Мгновенные уведомления включены' : 'Не получилось. Разрешите уведомления в настройках iPhone',
+                                  );
+                                }
+                              },
+                              icon: const Icon(
+                                Icons.notifications_active_outlined,
+                              ),
+                              label: const Text(
+                                'Включить мгновенные уведомления',
+                              ),
+                            ),
+                          ),
                   ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,

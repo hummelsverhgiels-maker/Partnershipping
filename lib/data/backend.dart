@@ -1,9 +1,10 @@
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 
 import '../config.dart';
 import '../models.dart';
+import 'probe_io.dart' if (dart.library.js_interop) 'probe_web.dart';
 
 /// Тонкая обёртка над Supabase. Если ключи не заданы, всё отключено.
 class Backend {
@@ -17,30 +18,34 @@ class Backend {
   /// Адрес, который реально используется (прямой или через посредника).
   static String activeUrl = kSupabaseUrl;
 
-  static Future<bool> _probe(String base) async {
-    try {
-      final r = await http
-          .get(
-            Uri.parse('$base/auth/v1/health'),
-            headers: {'apikey': kSupabaseAnonKey},
-          )
-          .timeout(const Duration(seconds: 4));
-      return r.statusCode < 500;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  /// Сначала обычный адрес; если он не отвечает, идём через посредника.
+  /// Выбор пути к серверу. Запоминаем, что сработало в прошлый раз,
+  /// чтобы там, где обычный адрес заблокирован, не ждать каждый запуск.
   static Future<String> _pickUrl() async {
     if (kSupabaseProxyUrl.isEmpty) return kSupabaseUrl;
-    final proxy = _probe(kSupabaseProxyUrl);
-    if (await _probe(kSupabaseUrl)) return kSupabaseUrl;
-    if (await proxy) {
-      debugPrint('Сервер напрямую недоступен, использую посредника');
-      return kSupabaseProxyUrl;
+    SharedPreferences? prefs;
+    try {
+      prefs = await SharedPreferences.getInstance();
+    } catch (_) {}
+    final lastProxy = prefs?.getString('server_choice') == 'proxy';
+
+    Future<String?> tryProxy() async =>
+        await probeServer(kSupabaseProxyUrl) ? kSupabaseProxyUrl : null;
+    Future<String?> tryDirect() async =>
+        await probeServer(kSupabaseUrl) ? kSupabaseUrl : null;
+
+    String? chosen;
+    if (lastProxy) {
+      chosen = await tryProxy() ?? await tryDirect();
+    } else {
+      final proxy = tryProxy(); // параллельно, чтобы не ждать лишнего
+      chosen = await tryDirect() ?? await proxy;
     }
-    return kSupabaseUrl;
+    chosen ??= kSupabaseUrl;
+    await prefs?.setString(
+      'server_choice',
+      chosen == kSupabaseProxyUrl ? 'proxy' : 'direct',
+    );
+    return chosen;
   }
 
   static Future<void> init() async {

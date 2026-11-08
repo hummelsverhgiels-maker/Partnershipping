@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../config.dart';
 import '../data/backend.dart';
 import '../data/store.dart';
 import '../models.dart';
@@ -23,6 +24,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   int _step = 0; // 0 имя, 1 выбор, 2 вход по коду
   bool _busy = false;
   String? _error;
+  String? _raw;
   ({String pairId, List<Member> members})? _found;
 
   @override
@@ -36,11 +38,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     setState(() {
       _busy = true;
       _error = null;
+      _raw = null;
     });
     try {
       await job();
     } catch (e) {
-      if (mounted) setState(() => _error = Backend.explain(e));
+      if (mounted) {
+        setState(() {
+          _error = Backend.explain(e);
+          _raw = e.toString();
+        });
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -153,9 +161,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               const SizedBox(height: 16),
               SoftCard(
                 color: const Color(0xFFFFE3E0),
-                child: Text(_error!, style: const TextStyle(color: kInk)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_error!, style: const TextStyle(color: kInk)),
+                    if (_raw != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          'Подробности: ${_raw!.length > 220 ? _raw!.substring(0, 220) : _raw}',
+                          style: const TextStyle(fontSize: 11, color: kInkSoft),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ],
+            const SizedBox(height: 16),
+            Center(
+              child: Text(
+                'Версия $kBuild · сервер: ${Backend.activeUrl == kSupabaseUrl ? 'напрямую' : 'через посредника'}',
+                style: const TextStyle(fontSize: 11, color: kInkSoft),
+              ),
+            ),
           ],
         ),
       ),

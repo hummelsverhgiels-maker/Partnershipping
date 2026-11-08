@@ -29,7 +29,11 @@ Future<void> main() async {
   }
   final store = AppStore();
   await store.init();
-  await PushService.init(store);
+  // Firebase грузится в фоне: если серверы Google недоступны, приложение всё равно запустится.
+  unawaited(
+    PushService.init(store)
+        .timeout(const Duration(seconds: 15), onTimeout: () {}),
+  );
   runApp(PartnershippingApp(store: store));
 }
 
