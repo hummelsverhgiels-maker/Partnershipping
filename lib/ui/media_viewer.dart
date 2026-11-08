@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
+import '../data/backend.dart';
 import '../data/store.dart';
 import '../models.dart';
 import '../services/media_service.dart';
@@ -29,7 +30,13 @@ Future<void> openFileExternally(BuildContext context, String path) async {
 class MediaViewer extends StatefulWidget {
   final AppStore store;
   final Rec message;
-  const MediaViewer({super.key, required this.store, required this.message});
+  final bool star; // кнопка «важное» (только для сообщений чата)
+  const MediaViewer({
+    super.key,
+    required this.store,
+    required this.message,
+    this.star = true,
+  });
 
   @override
   State<MediaViewer> createState() => _MediaViewerState();
@@ -52,8 +59,16 @@ class _MediaViewerState extends State<MediaViewer> {
     try {
       final url = await MediaService.url(widget.message.s('path')!);
       if (_isVideo) {
-        final c = VideoPlayerController.networkUrl(Uri.parse(url));
-        await c.initialize();
+        var c = VideoPlayerController.networkUrl(Uri.parse(url));
+        try {
+          await c.initialize();
+        } catch (_) {
+          final alt = Backend.alternate(url);
+          if (alt == null) rethrow;
+          await c.dispose();
+          c = VideoPlayerController.networkUrl(Uri.parse(alt));
+          await c.initialize();
+        }
         c.addListener(() {
           if (mounted) setState(() {});
         });
@@ -88,18 +103,19 @@ class _MediaViewerState extends State<MediaViewer> {
           style: const TextStyle(fontSize: 15, color: Colors.white),
         ),
         actions: [
-          IconButton(
-            tooltip: 'Важное',
-            icon: Icon(
-              important ? Icons.star_rounded : Icons.star_border_rounded,
-              color: important ? const Color(0xFFFFD36B) : Colors.white,
+          if (widget.star)
+            IconButton(
+              tooltip: 'Важное',
+              icon: Icon(
+                important ? Icons.star_rounded : Icons.star_border_rounded,
+                color: important ? const Color(0xFFFFD36B) : Colors.white,
+              ),
+              onPressed: () {
+                final cur = widget.store.recById(m.id);
+                if (cur != null) widget.store.toggleImportant(cur);
+                setState(() {});
+              },
             ),
-            onPressed: () {
-              final cur = widget.store.recById(m.id);
-              if (cur != null) widget.store.toggleImportant(cur);
-              setState(() {});
-            },
-          ),
           IconButton(
             tooltip: 'Открыть или скачать',
             icon: const Icon(Icons.open_in_new),
@@ -234,7 +250,13 @@ class _VoicePlayerState extends State<VoicePlayer> {
         await _player.resume();
       } else {
         final url = await MediaService.url(widget.path);
-        await _player.play(UrlSource(url));
+        try {
+          await _player.play(UrlSource(url));
+        } catch (_) {
+          final alt = Backend.alternate(url);
+          if (alt == null) rethrow;
+          await _player.play(UrlSource(alt));
+        }
       }
     } catch (e) {
       if (mounted) {

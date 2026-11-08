@@ -163,6 +163,8 @@ class Notifier {
       if (cats.contains('event')) 'события',
       if (cats.contains('shopping')) 'покупки',
       if (cats.contains('todo')) 'дела',
+      if (cats.contains('feed')) 'ленту',
+      if (cats.contains('docs')) 'документы',
     ];
     if (parts.isEmpty) return;
     try {

@@ -11,6 +11,8 @@ struct DaysOffEntry: TimelineEntry {
     let me: String
     let partner: String
     let both: String
+    let chat: String
+    let mood: String
 }
 
 struct DaysOffProvider: TimelineProvider {
@@ -23,7 +25,9 @@ struct DaysOffProvider: TimelineProvider {
         let me = defaults?.string(forKey: "wm_\(key)") ?? "Откройте приложение, чтобы обновить"
         let partner = defaults?.string(forKey: "wp_\(key)") ?? ""
         let both = defaults?.string(forKey: "wb_\(key)") ?? ""
-        return DaysOffEntry(date: date, me: me, partner: partner, both: both)
+        let chat = defaults?.string(forKey: "wchat") ?? ""
+        let mood = defaults?.string(forKey: "wmood") ?? ""
+        return DaysOffEntry(date: date, me: me, partner: partner, both: both, chat: chat, mood: mood)
     }
 
     func placeholder(in context: Context) -> DaysOffEntry {
@@ -31,7 +35,9 @@ struct DaysOffProvider: TimelineProvider {
             date: Date(),
             me: "Я: Выходной в пятницу, 2 дня подряд",
             partner: "Аня: Выходной завтра",
-            both: "Вместе: Выходной в субботу, 2 дня подряд")
+            both: "Вместе: Выходной в субботу, 2 дня подряд",
+            chat: "💬 Аня: Привет!",
+            mood: "Настроение: Я 🙂 · Аня 😐")
     }
 
     func getSnapshot(in context: Context, completion: @escaping (DaysOffEntry) -> Void) {
@@ -73,6 +79,18 @@ struct DaysOffView: View {
                 Text(entry.both)
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(Color(red: 0.76, green: 0.38, blue: 0.25))
+                    .minimumScaleFactor(0.7)
+            }
+            if !entry.mood.isEmpty {
+                Text(entry.mood)
+                    .font(.system(size: 12))
+                    .foregroundColor(Color(red: 0.55, green: 0.50, blue: 0.47))
+                    .minimumScaleFactor(0.7)
+            }
+            if !entry.chat.isEmpty {
+                Text(entry.chat)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(Color(red: 0.29, green: 0.25, blue: 0.23))
                     .minimumScaleFactor(0.7)
             }
         }

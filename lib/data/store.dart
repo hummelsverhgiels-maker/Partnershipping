@@ -59,6 +59,11 @@ class AppStore extends ChangeNotifier {
   List<Rec> expenses = [];
   List<Rec> goals = [];
   List<Rec> wishes = [];
+  List<Rec> posts = [];
+  Map<String, List<Rec>> commentsByPost = {};
+  List<Rec> docs = [];
+  Map<String, Rec> moods = {}; // memberId -> запись настроения
+  Map<String, int> seenTs = {}; // memberId -> до какого сообщения прочитан чат
 
   bool get hasSession => session != null;
   bool get isLocal => session?.local ?? true;
@@ -437,6 +442,10 @@ class AppStore extends ChangeNotifier {
         return 'todo';
       case 'message':
         return 'chat';
+      case 'post':
+        return 'feed';
+      case 'doc':
+        return 'docs';
       case 'event':
         return 'event';
     }
@@ -444,24 +453,54 @@ class AppStore extends ChangeNotifier {
   }
 
   // ------------------------------------------------------------- чат
-  int get chatSeen => _prefs?.getInt('chat_seen') ?? 0;
+  int get chatSeen {
+    final local = _prefs?.getInt('chat_seen') ?? 0;
+    final remote = seenTs[session?.memberId] ?? 0;
+    return local > remote ? local : remote;
+  }
 
   /// Автор сообщения (а не тот, кто последним поменял пометку «важное»).
   String? authorOf(Rec m) => m.s('from') ?? m.updatedBy;
 
-  int get unreadChat {
-    final meId = session?.memberId;
-    final seen = chatSeen;
+  /// Сколько непрочитанных сообщений у участника [memberId] (от другого человека).
+  int unreadFor(String memberId) {
+    final seen = memberId == session?.memberId
+        ? chatSeen
+        : (seenTs[memberId] ?? 0);
     return messages
-        .where((m) => authorOf(m) != meId && (m.i('ts') ?? 0) > seen)
+        .where((m) => authorOf(m) != memberId && (m.i('ts') ?? 0) > seen)
         .length;
   }
+
+  /// Последнее сообщение от других для участника (для виджета).
+  Rec? lastUnreadFor(String memberId) {
+    final seen = memberId == session?.memberId
+        ? chatSeen
+        : (seenTs[memberId] ?? 0);
+    Rec? last;
+    for (final m in messages) {
+      if (authorOf(m) != memberId && (m.i('ts') ?? 0) > seen) last = m;
+    }
+    return last;
+  }
+
+  int get unreadChat => session == null ? 0 : unreadFor(session!.memberId);
 
   Future<void> markChatSeen() async {
     final latest = messages.isEmpty ? 0 : (messages.last.i('ts') ?? 0);
     if (latest <= chatSeen) return;
     await _prefs?.setInt('chat_seen', latest);
-    notifyListeners();
+    // Запоминаем и в общих данных, чтобы партнёр (и виджет) знали, что прочитано.
+    final meId = session?.memberId;
+    if (meId != null) {
+      Rec? existing;
+      for (final r in _recs.values) {
+        if (r.kind == 'seen' && r.s('memberId') == meId) existing = r;
+      }
+      upsert('seen', {'memberId': meId, 'ts': latest}, id: existing?.id);
+    } else {
+      notifyListeners();
+    }
   }
 
   Map<String, dynamic> _replyData(Rec? replyTo) {
@@ -570,6 +609,131 @@ class AppStore extends ChangeNotifier {
       await Backend.upsertDevice(s.pairId, s.memberId, token, platform);
     } catch (e) {
       debugPrint('Устройство не зарегистрировано: $e');
+    }
+  }
+
+  // ----------------------------------------------------------- настроение
+  void setMood(int value) {
+    final meId = session?.memberId;
+    if (meId == null) return;
+    final existing = moods[meId];
+    upsert('mood', {
+      'memberId': meId,
+      'value': value.clamp(0, 100),
+      'ts': DateTime.now().millisecondsSinceEpoch,
+    }, id: existing?.id);
+  }
+
+  int? moodOf(String memberId) => moods[memberId]?.i('value');
+
+  // ------------------------------------------------------------------ лента
+  void createPost(String text, List<Map<String, dynamic>> media) {
+    final t = text.trim();
+    if (t.isEmpty && media.isEmpty) return;
+    upsert('post', {
+      'text': t,
+      'media': media,
+      'from': session?.memberId,
+      'ts': DateTime.now().millisecondsSinceEpoch,
+    });
+  }
+
+  bool postLikedByMe(Rec post) {
+    final meId = session?.memberId;
+    final likes = (post.data['likes'] as Map?) ?? const {};
+    return meId != null && likes[meId] == true;
+  }
+
+  void toggleLike(Rec post) {
+    final meId = session?.memberId;
+    if (meId == null) return;
+    final likes = <String, dynamic>{
+      ...Map<String, dynamic>.from((post.data['likes'] as Map?) ?? const {}),
+    };
+    if (likes[meId] == true) {
+      likes.remove(meId);
+    } else {
+      likes[meId] = true;
+    }
+    upsert('post', {...post.data, 'likes': likes}, id: post.id);
+  }
+
+  void addComment(String postId, String text) {
+    final t = text.trim();
+    if (t.isEmpty) return;
+    upsert('comment', {
+      'postId': postId,
+      'text': t,
+      'from': session?.memberId,
+      'ts': DateTime.now().millisecondsSinceEpoch,
+    });
+  }
+
+  /// Удалить пост вместе с комментариями и файлами.
+  void deletePost(Rec post) {
+    for (final c in commentsByPost[post.id] ?? const <Rec>[]) {
+      remove(c.id);
+    }
+    final media = (post.data['media'] as List?) ?? const [];
+    remove(post.id);
+    if (!isLocal) {
+      for (final m in media) {
+        final path = (m as Map)['path'] as String?;
+        if (path != null) {
+          Backend.deleteFile(path).catchError((Object e) {
+            debugPrint('Файл не удалён: $e');
+          });
+        }
+      }
+    }
+  }
+
+  // -------------------------------------------------------------- документы
+  void addDocFile({
+    required String title,
+    required String path,
+    required String name,
+    required int size,
+    required String cat,
+  }) {
+    upsert('doc', {
+      'kind': 'file',
+      'title': title,
+      'path': path,
+      'name': name,
+      'size': size,
+      'cat': cat,
+      'from': session?.memberId,
+      'ts': DateTime.now().millisecondsSinceEpoch,
+    });
+  }
+
+  void addDocLink({
+    required String title,
+    required String url,
+    required String cat,
+  }) {
+    upsert('doc', {
+      'kind': 'link',
+      'title': title,
+      'url': url,
+      'cat': cat,
+      'from': session?.memberId,
+      'ts': DateTime.now().millisecondsSinceEpoch,
+    });
+  }
+
+  void updateDoc(Rec doc, Map<String, dynamic> changes) {
+    upsert('doc', {...doc.data, ...changes}, id: doc.id);
+  }
+
+  void deleteDoc(Rec doc) {
+    final path = doc.s('path');
+    remove(doc.id);
+    if (path != null && !isLocal) {
+      Backend.deleteFile(path).catchError((Object e) {
+        debugPrint('Файл не удалён: $e');
+      });
     }
   }
 
@@ -808,6 +972,11 @@ class AppStore extends ChangeNotifier {
     final gl = <Rec>[];
     final wi = <Rec>[];
     final dm = <String>{};
+    final po = <Rec>[];
+    final cm = <String, List<Rec>>{};
+    final dc = <Rec>[];
+    final mo = <String, Rec>{};
+    final se = <String, int>{};
     for (final r in _recs.values) {
       switch (r.kind) {
         case 'shift':
@@ -859,6 +1028,19 @@ class AppStore extends ChangeNotifier {
           gl.add(r);
         case 'wish':
           wi.add(r);
+        case 'post':
+          po.add(r);
+        case 'comment':
+          final pid = r.s('postId');
+          if (pid != null) (cm[pid] ??= []).add(r);
+        case 'doc':
+          dc.add(r);
+        case 'mood':
+          final mid = r.s('memberId');
+          if (mid != null) mo[mid] = r;
+        case 'seen':
+          final mid = r.s('memberId');
+          if (mid != null) se[mid] = r.i('ts') ?? 0;
       }
     }
     // Если смена и «выходной» вдруг оба есть (две правки одновременно) — побеждает смена.
@@ -890,6 +1072,16 @@ class AppStore extends ChangeNotifier {
     expenses = exp;
     goals = gl;
     wishes = wi;
+    po.sort((a, b) => (b.i('ts') ?? 0).compareTo(a.i('ts') ?? 0));
+    for (final l in cm.values) {
+      l.sort((a, b) => (a.i('ts') ?? 0).compareTo(b.i('ts') ?? 0));
+    }
+    dc.sort((a, b) => (b.i('ts') ?? 0).compareTo(a.i('ts') ?? 0));
+    posts = po;
+    commentsByPost = cm;
+    docs = dc;
+    moods = mo;
+    seenTs = se;
     events = ev;
     shopping = sh;
     todos = td;

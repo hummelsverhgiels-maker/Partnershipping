@@ -10,6 +10,7 @@ import '../models.dart';
 import '../services/media_service.dart';
 import 'common.dart';
 import 'media_viewer.dart';
+import 'media_widgets.dart';
 import 'theme.dart';
 
 class ChatPage extends StatefulWidget {
@@ -533,7 +534,7 @@ class _ChatPageState extends State<ChatPage> {
     Widget content;
     switch (type) {
       case 'image':
-        content = _ImageThumb(
+        content = ImageThumb(
           path: m.s('path')!,
           width: 220,
           height: 220,
@@ -726,7 +727,7 @@ class _ChatPageState extends State<ChatPage> {
           fit: StackFit.expand,
           children: [
             if (m.s('type') == 'image')
-              _ImageThumb(path: m.s('path')!, onTap: () => _openMedia(m))
+              ImageThumb(path: m.s('path')!, onTap: () => _openMedia(m))
             else
               GestureDetector(
                 onTap: () => _openMedia(m),
@@ -928,95 +929,6 @@ class _ChatPageState extends State<ChatPage> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Миниатюра фото. Картинка скачивается один раз, хранится в памяти и
-/// показывается уменьшенной (так экран не тормозит).
-class _ImageThumb extends StatefulWidget {
-  final String path;
-  final double? width;
-  final double? height;
-  final VoidCallback onTap;
-  const _ImageThumb({
-    required this.path,
-    this.width,
-    this.height,
-    required this.onTap,
-  });
-
-  @override
-  State<_ImageThumb> createState() => _ImageThumbState();
-}
-
-class _ImageThumbState extends State<_ImageThumb> {
-  late Future<Uint8List> _future;
-
-  @override
-  void initState() {
-    super.initState();
-    _future = MediaService.bytes(widget.path);
-  }
-
-  @override
-  void didUpdateWidget(covariant _ImageThumb old) {
-    super.didUpdateWidget(old);
-    if (old.path != widget.path) _future = MediaService.bytes(widget.path);
-  }
-
-  Widget _placeholder({Widget? child}) => ColoredBox(
-    color: kPlaceholder,
-    child: Center(child: child),
-  );
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: widget.onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: SizedBox(
-          width: widget.width,
-          height: widget.height,
-          child: LayoutBuilder(
-            builder: (context, c) {
-              final dpr = MediaQuery.of(context).devicePixelRatio;
-              final w = (c.maxWidth.isFinite ? c.maxWidth : 220) * dpr;
-              final cacheW = w.round().clamp(96, 720);
-              return FutureBuilder<Uint8List>(
-                future: _future,
-                builder: (context, snap) {
-                  if (snap.hasError) {
-                    return _placeholder(
-                      child: const Icon(Icons.broken_image_outlined),
-                    );
-                  }
-                  if (!snap.hasData) {
-                    return _placeholder(
-                      child: const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    );
-                  }
-                  return Image.memory(
-                    snap.data!,
-                    fit: BoxFit.cover,
-                    cacheWidth: cacheW,
-                    gaplessPlayback: true,
-                    filterQuality: FilterQuality.low,
-                    errorBuilder: (c, e, st) => _placeholder(
-                      child: const Icon(Icons.broken_image_outlined),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
         ),
       ),
     );

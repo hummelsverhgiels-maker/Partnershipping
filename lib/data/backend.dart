@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 
@@ -7,6 +10,21 @@ import '../models.dart';
 import 'probe_io.dart' if (dart.library.js_interop) 'probe_web.dart';
 
 /// Тонкая обёртка над Supabase. Если ключи не заданы, всё отключено.
+class StorageRejected implements Exception {
+  final int status;
+  final String body;
+  StorageRejected(this.status, this.body);
+
+  @override
+  String toString() {
+    if (status == 413) return 'Файл слишком большой для хранилища (код 413).';
+    if (status == 400 || status == 403 || status == 404) {
+      return 'Хранилище не приняло файл (код $status). Проверьте, что в Supabase выполнен schema.sql. $body';
+    }
+    return 'Хранилище ответило кодом $status. $body';
+  }
+}
+
 class Backend {
   static bool get configured =>
       kSupabaseUrl.isNotEmpty && kSupabaseAnonKey.isNotEmpty;
@@ -242,23 +260,73 @@ class Backend {
     });
   }
 
-  // ---- файлы чата (Supabase Storage, бакет «chat») ----
+  // ---- файлы (Supabase Storage, бакет «chat») ----
+
+  /// Запасной адрес сервера (если основной не отвечает).
+  static String get altUrl {
+    if (kSupabaseProxyUrl.isEmpty) return '';
+    return activeUrl == kSupabaseProxyUrl ? kSupabaseUrl : kSupabaseProxyUrl;
+  }
+
+  static bool _isNetworkIssue(Object e) =>
+      e is TimeoutException || e is http.ClientException || isNetworkError(e);
+
+  /// Загрузка файла. Тяжёлые запросы провайдеры иногда обрывают («Connection reset»),
+  /// поэтому пробуем несколько раз и, если нужно, через запасной адрес.
   static Future<void> uploadFile(
     String path,
     Uint8List bytes,
     String contentType,
   ) async {
-    await client.storage
-        .from('chat')
-        .uploadBinary(
-          path,
-          bytes,
-          fileOptions: FileOptions(contentType: contentType, upsert: true),
-        );
+    var session = client.auth.currentSession;
+    if (session == null || session.isExpired) {
+      try {
+        await ensureSignedIn();
+        await client.auth.refreshSession();
+      } catch (_) {}
+      session = client.auth.currentSession;
+    }
+    final token = session?.accessToken ?? kSupabaseAnonKey;
+    final bases = <String>[activeUrl, if (altUrl.isNotEmpty) altUrl];
+    Object? lastError;
+    for (final base in bases) {
+      for (var attempt = 0; attempt < 2; attempt++) {
+        try {
+          final r = await http
+              .post(
+                Uri.parse('$base/storage/v1/object/chat/$path'),
+                headers: {
+                  'apikey': kSupabaseAnonKey,
+                  'Authorization': 'Bearer $token',
+                  'Content-Type': contentType,
+                  'x-upsert': 'true',
+                  'cache-control': 'max-age=3600',
+                },
+                body: bytes,
+              )
+              .timeout(const Duration(minutes: 4));
+          if (r.statusCode >= 200 && r.statusCode < 300) return;
+          // Сервер ответил отказом: это не сетевой сбой, повторять нет смысла.
+          throw StorageRejected(r.statusCode, r.body);
+        } catch (e) {
+          if (e is StorageRejected) rethrow;
+          if (!_isNetworkIssue(e)) rethrow;
+          lastError = e;
+          await Future<void>.delayed(const Duration(milliseconds: 500));
+        }
+      }
+    }
+    throw lastError ?? 'Не удалось отправить файл';
   }
 
   static Future<String> signedUrl(String path) =>
       client.storage.from('chat').createSignedUrl(path, 3600);
+
+  /// Тот же адрес, но через запасной путь.
+  static String? alternate(String url) {
+    if (altUrl.isEmpty || !url.startsWith(activeUrl)) return null;
+    return altUrl + url.substring(activeUrl.length);
+  }
 
   static Future<void> deleteFile(String path) async {
     await client.storage.from('chat').remove([path]);

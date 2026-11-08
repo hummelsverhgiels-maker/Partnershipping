@@ -91,6 +91,7 @@ class _BudgetPageState extends State<BudgetPage> {
             ),
           ),
           floatingActionButton: FloatingActionButton.extended(
+            heroTag: null,
             onPressed: () => showExpenseSheet(context, s, month: _month),
             icon: const Icon(Icons.add_rounded),
             label: const Text(

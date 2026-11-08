@@ -9,6 +9,7 @@ import 'common.dart';
 import 'day_page.dart';
 import 'earnings_page.dart';
 import 'important_page.dart';
+import 'mood_card.dart';
 import 'sheets.dart';
 import 'theme.dart';
 
@@ -123,7 +124,7 @@ class TodayPage extends StatelessWidget {
             const SizedBox(height: 12),
             SoftCard(
               color: kAccentSoft,
-              onTap: () => onOpenTab(3),
+              onTap: () => onOpenTab(4),
               child: Row(
                 children: [
                   const Text('💬', style: TextStyle(fontSize: 24)),
@@ -166,6 +167,8 @@ class TodayPage extends StatelessWidget {
               ),
             ),
           ],
+          const SectionTitle('НАСТРОЕНИЕ'),
+          MoodCard(store: s),
           const SizedBox(height: 14),
           Row(
             children: [

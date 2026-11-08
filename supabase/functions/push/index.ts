@@ -66,6 +66,8 @@ function categoryOf(kind: string): string | null {
     case "event": return "event";
     case "shopping": return "shopping";
     case "todo": return "todo";
+    case "post": return "feed";
+    case "doc": return "docs";
   }
   return null;
 }
@@ -75,6 +77,8 @@ const CATEGORY_TEXT: Record<string, string> = {
   event: "события",
   shopping: "покупки",
   todo: "дела",
+  feed: "ленту",
+  docs: "документы",
 };
 
 Deno.serve(async (req) => {

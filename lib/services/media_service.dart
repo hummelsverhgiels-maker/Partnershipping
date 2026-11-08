@@ -184,13 +184,24 @@ class MediaService {
 
   static Future<Uint8List> _download(String path) async {
     final url = await Backend.signedUrl(path);
-    final r = await http
-        .get(Uri.parse(url))
-        .timeout(const Duration(seconds: 45));
-    if (r.statusCode != 200) {
-      throw 'Сервер вернул код ${r.statusCode} (${r.reasonPhrase ?? ''})';
+    final candidates = <String>[url, ?Backend.alternate(url)];
+    Object? lastError;
+    for (final u in candidates) {
+      for (var attempt = 0; attempt < 2; attempt++) {
+        try {
+          final r = await http
+              .get(Uri.parse(u))
+              .timeout(const Duration(seconds: 45));
+          if (r.statusCode == 200) return r.bodyBytes;
+          throw 'Сервер вернул код ${r.statusCode} (${r.reasonPhrase ?? ''})';
+        } catch (e) {
+          lastError = e;
+          if (e is String) rethrow; // отказ сервера: повторять незачем
+          await Future<void>.delayed(const Duration(milliseconds: 400));
+        }
+      }
     }
-    return r.bodyBytes;
+    throw lastError ?? 'Не удалось скачать файл';
   }
 
   /// Android может закрыть приложение, пока открыта камера. Тогда снимок
@@ -221,9 +232,14 @@ class MediaService {
   }
 
   /// Загрузить файл в хранилище пары; возвращает путь в хранилище.
-  static Future<String> upload(PairSession s, PickedMedia m) async {
+  static Future<String> upload(
+    PairSession s,
+    PickedMedia m, {
+    String? folder,
+  }) async {
     final ext = _ext(m.name);
-    final path = '${s.pairId}/${newId()}${ext.isEmpty ? '' : '.$ext'}';
+    final dir = folder == null ? s.pairId : '${s.pairId}/$folder';
+    final path = '$dir/${newId()}${ext.isEmpty ? '' : '.$ext'}';
     await Backend.uploadFile(path, m.bytes, m.contentType);
     return path;
   }

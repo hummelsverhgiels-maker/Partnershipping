@@ -53,6 +53,7 @@ class ImportantPage extends StatelessWidget {
             ),
           ),
           floatingActionButton: FloatingActionButton.extended(
+            heroTag: null,
             onPressed: () => showImportantSheet(context, store),
             icon: const Icon(Icons.add_rounded),
             label: const Text(

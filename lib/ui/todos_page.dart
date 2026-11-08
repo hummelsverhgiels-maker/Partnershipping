@@ -48,6 +48,7 @@ class TodosPage extends StatelessWidget {
     return Scaffold(
       appBar: embedded ? null : AppBar(title: const Text('Дела')),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: () => showTodoSheet(context, store),
         backgroundColor: const Color(0xFFE58E70),
         foregroundColor: Colors.white,

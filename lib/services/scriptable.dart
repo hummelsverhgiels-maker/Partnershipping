@@ -51,8 +51,10 @@ w.addSpacer(6);
 lines.forEach((line, i) => {
   if (!line) return;
   const t = w.addText(line);
-  t.font = (i === 0 || i === 2) ? Font.boldSystemFont(14) : Font.systemFont(14);
-  t.textColor = new Color(i === 2 ? "#C2603F" : "#4A3F3A");
+  if (i === 0 || i === 2) { t.font = Font.boldSystemFont(14); t.textColor = new Color(i === 2 ? "#C2603F" : "#4A3F3A"); }
+  else if (i === 3) { t.font = Font.boldSystemFont(13); t.textColor = new Color("#4A3F3A"); }
+  else if (i === 4) { t.font = Font.systemFont(12); t.textColor = new Color("#8C7F78"); }
+  else { t.font = Font.systemFont(14); t.textColor = new Color("#4A3F3A"); }
   t.minimumScaleFactor = 0.7;
   w.addSpacer(4);
 });

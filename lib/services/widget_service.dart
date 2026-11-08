@@ -6,6 +6,8 @@ import 'package:home_widget/home_widget.dart';
 
 import '../data/backend.dart';
 import '../data/store.dart';
+import '../config.dart';
+import '../logic/mood.dart';
 import '../logic/schedule.dart';
 import '../models.dart';
 import '../util.dart';
@@ -44,7 +46,41 @@ class WidgetService {
       out.add('Партнёр ещё не подключён');
       out.add('');
     }
+    out.add(chatLine(store, viewer, other));
+    out.add(moodLine(store, viewer, other));
     return out;
+  }
+
+  /// «💬 Аня: Привет! (+2)» — пока есть непрочитанные сообщения.
+  static String chatLine(AppStore store, Member viewer, Member? other) {
+    if (other == null) return '';
+    final n = store.unreadFor(viewer.id);
+    final last = store.lastUnreadFor(viewer.id);
+    if (n == 0 || last == null) return '';
+    var t = last.s('text') ?? '';
+    if (t.isEmpty) {
+      t = switch (last.s('type')) {
+        'image' => '📷 Фото',
+        'video' => '🎥 Видео',
+        'audio' => '🎤 Голосовое',
+        'file' => '📎 Файл',
+        _ => 'Сообщение',
+      };
+    }
+    if (t.length > 34) t = '${t.substring(0, 34)}…';
+    return '💬 ${other.name}: $t${n > 1 ? ' (+${n - 1})' : ''}';
+  }
+
+  /// «Настроение: Я 🙂 · Аня 😐».
+  static String moodLine(AppStore store, Member viewer, Member? other) {
+    final a = store.moodOf(viewer.id);
+    final b = other == null ? null : store.moodOf(other.id);
+    if (a == null && b == null) return '';
+    final parts = <String>[
+      if (a != null) 'Я ${moodEmoji(a)}',
+      if (b != null) '${other!.name} ${moodEmoji(b)}',
+    ];
+    return 'Настроение: ${parts.join(' · ')}';
   }
 
   static Future<void> update(AppStore store) async {
@@ -64,6 +100,28 @@ class WidgetService {
           await HomeWidget.saveWidgetData<String>('wm_$key', l[0]);
           await HomeWidget.saveWidgetData<String>('wp_$key', l[1]);
           await HomeWidget.saveWidgetData<String>('wb_$key', l[2]);
+        }
+        final now = lines(store, me, partner, today);
+        await HomeWidget.saveWidgetData<String>('wchat', now[3]);
+        await HomeWidget.saveWidgetData<String>('wmood', now[4]);
+        // Данные для самостоятельного обновления виджета Android (даже при закрытом приложении)
+        if (!store.isLocal && store.session != null) {
+          await HomeWidget.saveWidgetData<String>(
+            'cfg_urls',
+            [
+              kSupabaseUrl,
+              kSupabaseProxyUrl,
+            ].where((u) => u.isNotEmpty).join(','),
+          );
+          await HomeWidget.saveWidgetData<String>('cfg_key', kSupabaseAnonKey);
+          await HomeWidget.saveWidgetData<String>(
+            'cfg_code',
+            store.session!.code,
+          );
+          await HomeWidget.saveWidgetData<String>(
+            'cfg_member',
+            store.session!.memberId,
+          );
         }
         await HomeWidget.updateWidget(
           qualifiedAndroidName: _provider,

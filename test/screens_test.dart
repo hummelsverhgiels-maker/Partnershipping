@@ -57,6 +57,13 @@ Future<AppStore> _storeWithData() async {
     'by': me,
   });
   store.upsert('goal', {'title': 'Отпуск', 'target': 100000, 'saved': 25000});
+  store.createPost('Первая публикация', const []);
+  store.addDocLink(
+    title: 'Паспорт (ссылка)',
+    url: 'https://drive.google.com/x',
+    cat: 'id',
+  );
+  store.setMood(80);
   store.sendMessage('Привет!');
   store.sendMessage('Ответ', replyTo: store.messages.first);
   store.toggleReaction(store.messages.first, '❤️');
@@ -128,7 +135,7 @@ void main() {
         expect(tester.takeException(), isNull);
 
         Finder nav(String label) => find.descendant(
-          of: find.byType(NavigationBar),
+          of: find.byKey(const ValueKey('bottom-bar')),
           matching: find.text(label),
         );
 
@@ -188,6 +195,26 @@ void main() {
         }
         expect(tester.takeException(), isNull);
 
+        // Лента: публикация, лайк, комментарии
+        await tester.tap(nav('Лента'));
+        await _settle(tester);
+        expect(find.text('Первая публикация'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.tap(find.byIcon(Icons.favorite_border_rounded));
+        await _settle(tester);
+        expect(store.postLikedByMe(store.posts.first), true);
+        await tester.tap(find.byIcon(Icons.chat_bubble_outline_rounded));
+        await _settle(tester);
+        expect(find.text('Комментарии'), findsWidgets);
+        await tester.tapAt(const Offset(200, 100));
+        await _settle(tester);
+
+        // Документы
+        await tester.tap(nav('Документы'));
+        await _settle(tester);
+        expect(find.text('Паспорт (ссылка)'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+
         // Ещё и вложенные экраны
         await tester.tap(nav('Ещё'));
         await _settle(tester);
@@ -236,6 +263,12 @@ void main() {
     store.setShiftPay(me, true);
     expect(store.hourRateFor(me), 350);
     expect(store.shiftPayFor(me), true);
+    // настроение и документы
+    expect(store.moodOf(me), 80);
+    store.setMood(15);
+    expect(store.moodOf(me), 15);
+    expect(store.posts.length, 1);
+    expect(store.docs.length, 1);
     // реакции и ответы
     expect(store.messages.last.s('replyText'), 'Привет!');
     expect(store.messages.first.data['reactions'], isNotEmpty);
