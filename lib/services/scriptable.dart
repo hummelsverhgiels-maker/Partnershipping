@@ -5,7 +5,7 @@ import '../config.dart';
 String scriptableScript({required String code, required String memberId}) =>
     '''
 // Виджет «V&V loving planning»: ближайшие выходные
-const URL_BASE = "$kSupabaseUrl";
+const URLS = ["$kSupabaseUrl", "$kSupabaseProxyUrl"];
 const KEY = "$kSupabaseAnonKey";
 const CODE = "$code";
 const ME = "$memberId";
@@ -20,18 +20,23 @@ function todayKey() {
 }
 
 let data = null;
-try {
-  const req = new Request(URL_BASE + "/rest/v1/rpc/get_widget");
-  req.method = "POST";
-  req.headers = { apikey: KEY, "Content-Type": "application/json" };
-  req.body = JSON.stringify({ p_code: CODE, p_member: ME });
-  data = await req.loadJSON();
-  if (data && typeof data === "object") {
-    fm.writeString(cachePath, JSON.stringify(data));
-  }
-} catch (e) {
-  if (fm.fileExists(cachePath)) data = JSON.parse(fm.readString(cachePath));
+for (const base of URLS) {
+  if (!base) continue;
+  try {
+    const req = new Request(base + "/rest/v1/rpc/get_widget");
+    req.method = "POST";
+    req.timeoutInterval = 6;
+    req.headers = { apikey: KEY, "Content-Type": "application/json" };
+    req.body = JSON.stringify({ p_code: CODE, p_member: ME });
+    const res = await req.loadJSON();
+    if (res && typeof res === "object") {
+      data = res;
+      fm.writeString(cachePath, JSON.stringify(res));
+      break;
+    }
+  } catch (e) {}
 }
+if (!data && fm.fileExists(cachePath)) data = JSON.parse(fm.readString(cachePath));
 
 let lines = ["Откройте приложение «V&V loving planning», чтобы обновить"];
 if (data && data[todayKey()]) lines = data[todayKey()];

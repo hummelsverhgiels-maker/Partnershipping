@@ -12,3 +12,8 @@ const String kSupabaseAnonKey = String.fromEnvironment(
   'SUPABASE_ANON_KEY',
   defaultValue: _defaultAnonKey,
 );
+
+// Запасной путь к серверу (посредник на Cloudflare). Нужен там, где обычный
+// адрес Supabase блокируется провайдером. Приложение само выберет, какой работает.
+const String kSupabaseProxyUrl =
+    'https://vv-proxy.hummelsverhgiels.workers.dev';

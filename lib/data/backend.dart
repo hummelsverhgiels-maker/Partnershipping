@@ -1,5 +1,5 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 
 import '../config.dart';
@@ -14,11 +14,48 @@ class Backend {
 
   static SupabaseClient get client => Supabase.instance.client;
 
+  /// Адрес, который реально используется (прямой или через посредника).
+  static String activeUrl = kSupabaseUrl;
+
+  static Future<bool> _probe(String base) async {
+    try {
+      final r = await http
+          .get(
+            Uri.parse('$base/auth/v1/health'),
+            headers: {'apikey': kSupabaseAnonKey},
+          )
+          .timeout(const Duration(seconds: 4));
+      return r.statusCode < 500;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Сначала обычный адрес; если он не отвечает, идём через посредника.
+  static Future<String> _pickUrl() async {
+    if (kSupabaseProxyUrl.isEmpty) return kSupabaseUrl;
+    final proxy = _probe(kSupabaseProxyUrl);
+    if (await _probe(kSupabaseUrl)) return kSupabaseUrl;
+    if (await proxy) {
+      debugPrint('Сервер напрямую недоступен, использую посредника');
+      return kSupabaseProxyUrl;
+    }
+    return kSupabaseUrl;
+  }
+
   static Future<void> init() async {
     if (!configured || _initialized) return;
+    activeUrl = await _pickUrl();
     await Supabase.initialize(
-      url: kSupabaseUrl,
+      url: activeUrl,
       publishableKey: kSupabaseAnonKey,
+      authOptions: FlutterAuthClientOptions(
+        // Ключ хранения входа не зависит от адреса: вход не теряется при смене пути.
+        localStorage: SharedPreferencesLocalStorage(
+          persistSessionKey:
+              'sb-${Uri.parse(kSupabaseUrl).host.split('.').first}-auth-token',
+        ),
+      ),
     );
     _initialized = true;
   }
