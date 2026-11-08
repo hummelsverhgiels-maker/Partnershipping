@@ -12,7 +12,7 @@ void main() {
     await store.init();
     await tester.pumpWidget(PartnershippingApp(store: store));
     await tester.pump();
-    expect(find.text('Мы вдвоём'), findsOneWidget);
+    expect(find.text('V&V loving planning'), findsOneWidget);
     expect(find.text('Как вас зовут?'), findsOneWidget);
   });
 

@@ -88,7 +88,7 @@ class _PartnershippingAppState extends State<PartnershippingApp>
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Мы вдвоём',
+      title: 'V&V loving planning',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
       locale: const Locale('ru'),

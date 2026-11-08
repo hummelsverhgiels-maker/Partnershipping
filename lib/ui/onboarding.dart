@@ -118,7 +118,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const Center(child: Text('💞', style: TextStyle(fontSize: 64))),
             const SizedBox(height: 8),
             const Center(
-              child: Text('Мы вдвоём',
+              child: Text('V&V loving planning',
                   style: TextStyle(
                       fontSize: 30, fontWeight: FontWeight.w800, color: kInk)),
             ),

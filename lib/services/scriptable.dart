@@ -3,7 +3,7 @@ import '../config.dart';
 /// Готовый скрипт для бесплатного приложения Scriptable (iPhone).
 /// Он берёт тексты виджета с сервера по коду пары и рисует виджет.
 String scriptableScript({required String code, required String memberId}) => '''
-// Виджет «Мы вдвоём»: ближайшие выходные
+// Виджет «V&V loving planning»: ближайшие выходные
 const URL_BASE = "$kSupabaseUrl";
 const KEY = "$kSupabaseAnonKey";
 const CODE = "$code";
@@ -32,7 +32,7 @@ try {
   if (fm.fileExists(cachePath)) data = JSON.parse(fm.readString(cachePath));
 }
 
-let lines = ["Откройте приложение «Мы вдвоём», чтобы обновить"];
+let lines = ["Откройте приложение «V&V loving planning», чтобы обновить"];
 if (data && data[todayKey()]) lines = data[todayKey()];
 
 const w = new ListWidget();
