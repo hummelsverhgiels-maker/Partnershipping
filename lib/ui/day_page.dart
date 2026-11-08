@@ -24,10 +24,17 @@ class DayPage extends StatelessWidget {
         final todos = store.todos.where((t) => t.s('date') == key).toList();
         final pays = store.schedule.paymentsInRange(date, date);
         return Scaffold(
-          appBar: AppBar(title: Text(longDate(date))),
+          appBar: AppBar(
+            title: const Text('День'),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+              onPressed: () => Navigator.maybePop(context),
+            ),
+          ),
           body: ListView(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
             children: [
+              _hero(),
               const SectionTitle('СМЕНЫ'),
               for (final m in store.orderedMembers) ...[
                 _shiftRow(context, m.id),
@@ -108,6 +115,68 @@ class DayPage extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  /// Крупная шапка с датой.
+  Widget _hero() {
+    final isToday = dateOnly(date) == dateOnly(DateTime.now());
+    final full = longDate(date);
+    final parts = full.split(', ');
+    return Container(
+      padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFFE0D2), Color(0xFFFBD3E0)],
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  parts.first,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: kInkSoft,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  parts.length > 1 ? parts.sublist(1).join(', ') : full,
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
+                    color: kInk,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (isToday)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.75),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text(
+                'Сегодня',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: kAccentDeep,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 

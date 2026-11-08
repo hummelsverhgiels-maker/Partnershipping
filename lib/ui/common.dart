@@ -1,9 +1,104 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../models.dart';
 import '../util.dart';
 import 'theme.dart';
+
+/// Мягкое нажатие: элемент слегка «проминается» и возвращается плавно.
+/// Работает на трансформации, поэтому почти ничего не стоит для телефона.
+class PressScale extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+  final double scale;
+  final bool haptic;
+  const PressScale({
+    super.key,
+    required this.child,
+    this.onTap,
+    this.onLongPress,
+    this.scale = 0.965,
+    this.haptic = true,
+  });
+
+  @override
+  State<PressScale> createState() => _PressScaleState();
+}
+
+class _PressScaleState extends State<PressScale> {
+  bool _down = false;
+
+  bool get _interactive => widget.onTap != null || widget.onLongPress != null;
+
+  void _set(bool v) {
+    if (_down != v && mounted) setState(() => _down = v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: _interactive ? (_) => _set(true) : null,
+      onTapUp: _interactive ? (_) => _set(false) : null,
+      onTapCancel: _interactive ? () => _set(false) : null,
+      onTap: widget.onTap == null
+          ? null
+          : () {
+              if (widget.haptic) HapticFeedback.selectionClick();
+              widget.onTap!();
+            },
+      onLongPress: widget.onLongPress == null
+          ? null
+          : () {
+              if (widget.haptic) HapticFeedback.mediumImpact();
+              _set(false);
+              widget.onLongPress!();
+            },
+      child: AnimatedScale(
+        scale: _down ? widget.scale : 1,
+        duration: Duration(milliseconds: _down ? 90 : 220),
+        curve: _down ? Curves.easeOut : Curves.easeOutBack,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+/// Лёгкая «пружинка» для кнопок: слегка уменьшается, пока на неё нажимают.
+/// Не перехватывает нажатия, поэтому кнопка внутри работает как обычно.
+class Bouncy extends StatefulWidget {
+  final Widget child;
+  final double scale;
+  const Bouncy({super.key, required this.child, this.scale = 0.97});
+
+  @override
+  State<Bouncy> createState() => _BouncyState();
+}
+
+class _BouncyState extends State<Bouncy> {
+  bool _down = false;
+
+  void _set(bool v) {
+    if (_down != v && mounted) setState(() => _down = v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerDown: (_) => _set(true),
+      onPointerUp: (_) => _set(false),
+      onPointerCancel: (_) => _set(false),
+      child: AnimatedScale(
+        scale: _down ? widget.scale : 1,
+        duration: Duration(milliseconds: _down ? 80 : 200),
+        curve: _down ? Curves.easeOut : Curves.easeOutBack,
+        child: widget.child,
+      ),
+    );
+  }
+}
 
 /// Мягкая карточка.
 class SoftCard extends StatelessWidget {
@@ -21,13 +116,17 @@ class SoftCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: color ?? Colors.white,
-      borderRadius: BorderRadius.circular(22),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(22),
-        onTap: onTap,
-        child: Padding(padding: padding, child: child),
+    return PressScale(
+      onTap: onTap,
+      scale: 0.975,
+      child: Container(
+        padding: padding,
+        decoration: BoxDecoration(
+          color: color ?? Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFF4E8E0)),
+        ),
+        child: child,
       ),
     );
   }
@@ -88,9 +187,12 @@ class ColorPicker extends StatelessWidget {
     runSpacing: 12,
     children: [
       for (final c in kMemberColors)
-        GestureDetector(
+        PressScale(
+          scale: 0.9,
           onTap: () => onChanged(c),
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
             width: 46,
             height: 46,
             decoration: BoxDecoration(
@@ -101,9 +203,11 @@ class ColorPicker extends StatelessWidget {
                 width: 3,
               ),
             ),
-            child: c == selected
-                ? const Icon(Icons.check, color: kInk, size: 22)
-                : null,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 160),
+              opacity: c == selected ? 1 : 0,
+              child: const Icon(Icons.check, color: kInk, size: 22),
+            ),
           ),
         ),
     ],

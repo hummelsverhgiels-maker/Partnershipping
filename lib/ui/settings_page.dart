@@ -141,10 +141,12 @@ class SettingsPage extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: () => _addTemplate(context),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Добавить шаблон'),
+                Bouncy(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _addTemplate(context),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Добавить шаблон'),
+                  ),
                 ),
               ],
             ),
@@ -171,10 +173,12 @@ class SettingsPage extends StatelessWidget {
                       onPressed: () => store.remove(r.id),
                     ),
                   ),
-                OutlinedButton.icon(
-                  onPressed: () => _addRule(context, myId),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Добавить день выплаты'),
+                Bouncy(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _addRule(context, myId),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Добавить день выплаты'),
+                  ),
                 ),
                 const Divider(height: 28),
                 const Text(
@@ -194,10 +198,12 @@ class SettingsPage extends StatelessWidget {
                       onPressed: () => store.remove(d.id),
                     ),
                   ),
-                OutlinedButton.icon(
-                  onPressed: () => _addDate(context, myId),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Добавить разовую дату'),
+                Bouncy(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _addDate(context, myId),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Добавить разовую дату'),
+                  ),
                 ),
                 const Divider(height: 28),
                 SwitchListTile(
@@ -233,23 +239,25 @@ class SettingsPage extends StatelessWidget {
                     style: TextStyle(height: 1.4),
                   ),
                   const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      Clipboard.setData(
-                        ClipboardData(
-                          text: scriptableScript(
-                            code: store.session!.code,
-                            memberId: store.session!.memberId,
+                  Bouncy(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Clipboard.setData(
+                          ClipboardData(
+                            text: scriptableScript(
+                              code: store.session!.code,
+                              memberId: store.session!.memberId,
+                            ),
                           ),
-                        ),
-                      );
-                      toast(
-                        context,
-                        'Скрипт скопирован. Вставьте его в Scriptable',
-                      );
-                    },
-                    icon: const Icon(Icons.copy_rounded),
-                    label: const Text('Скопировать скрипт виджета'),
+                        );
+                        toast(
+                          context,
+                          'Скрипт скопирован. Вставьте его в Scriptable',
+                        );
+                      },
+                      icon: const Icon(Icons.copy_rounded),
+                      label: const Text('Скопировать скрипт виджета'),
+                    ),
                   ),
                 ],
               ),
@@ -266,23 +274,26 @@ class SettingsPage extends StatelessWidget {
                         ? const SizedBox.shrink()
                         : Padding(
                             padding: const EdgeInsets.only(bottom: 8),
-                            child: OutlinedButton.icon(
-                              onPressed: () async {
-                                final ok = await PushService.requestPermission(
-                                  store,
-                                );
-                                if (context.mounted) {
-                                  toast(
-                                    context,
-                                    ok ? 'Мгновенные уведомления включены' : 'Не получилось. Разрешите уведомления в настройках iPhone',
-                                  );
-                                }
-                              },
-                              icon: const Icon(
-                                Icons.notifications_active_outlined,
-                              ),
-                              label: const Text(
-                                'Включить мгновенные уведомления',
+                            child: Bouncy(
+                              child: OutlinedButton.icon(
+                                onPressed: () async {
+                                  final ok =
+                                      await PushService.requestPermission(
+                                        store,
+                                      );
+                                  if (context.mounted) {
+                                    toast(
+                                      context,
+                                      ok ? 'Мгновенные уведомления включены' : 'Не получилось. Разрешите уведомления в настройках iPhone',
+                                    );
+                                  }
+                                },
+                                icon: const Icon(
+                                  Icons.notifications_active_outlined,
+                                ),
+                                label: const Text(
+                                  'Включить мгновенные уведомления',
+                                ),
                               ),
                             ),
                           ),
@@ -414,13 +425,15 @@ class SettingsPage extends StatelessWidget {
                 onChanged: (c) => setState(() => color = c),
               ),
               const SizedBox(height: 20),
-              FilledButton(
-                onPressed: () {
-                  if (name.text.trim().isEmpty) return;
-                  store.setMyProfile(name.text.trim(), color);
-                  Navigator.pop(ctx);
-                },
-                child: const Text('Сохранить'),
+              Bouncy(
+                child: FilledButton(
+                  onPressed: () {
+                    if (name.text.trim().isEmpty) return;
+                    store.setMyProfile(name.text.trim(), color);
+                    Navigator.pop(ctx);
+                  },
+                  child: const Text('Сохранить'),
+                ),
               ),
             ],
           ),
@@ -441,12 +454,14 @@ class SettingsPage extends StatelessWidget {
           content: Row(
             children: [
               Expanded(
-                child: OutlinedButton(
-                  onPressed: () async {
-                    final v = await pickTime(ctx, start);
-                    if (v != null) setState(() => start = v);
-                  },
-                  child: Text(start, style: const TextStyle(fontSize: 22)),
+                child: Bouncy(
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      final v = await pickTime(ctx, start);
+                      if (v != null) setState(() => start = v);
+                    },
+                    child: Text(start, style: const TextStyle(fontSize: 22)),
+                  ),
                 ),
               ),
               const Padding(
@@ -454,12 +469,14 @@ class SettingsPage extends StatelessWidget {
                 child: Text('—'),
               ),
               Expanded(
-                child: OutlinedButton(
-                  onPressed: () async {
-                    final v = await pickTime(ctx, end);
-                    if (v != null) setState(() => end = v);
-                  },
-                  child: Text(end, style: const TextStyle(fontSize: 22)),
+                child: Bouncy(
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      final v = await pickTime(ctx, end);
+                      if (v != null) setState(() => end = v);
+                    },
+                    child: Text(end, style: const TextStyle(fontSize: 22)),
+                  ),
                 ),
               ),
             ],

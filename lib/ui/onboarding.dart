@@ -93,9 +93,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
             child: const Text('Скопировать'),
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Дальше'),
+          Bouncy(
+            child: FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Дальше'),
+            ),
           ),
         ],
       ),
@@ -134,7 +136,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           padding: const EdgeInsets.all(24),
           children: [
             const SizedBox(height: 16),
-            const Center(child: Text('💞', style: TextStyle(fontSize: 64))),
+            Center(
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.4, end: 1),
+                duration: const Duration(milliseconds: 700),
+                curve: Curves.elasticOut,
+                builder: (context, v, child) =>
+                    Transform.scale(scale: v, child: child),
+                child: const Text('💞', style: TextStyle(fontSize: 64)),
+              ),
+            ),
             const SizedBox(height: 8),
             const Center(
               child: Text(
@@ -143,6 +154,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   fontSize: 30,
                   fontWeight: FontWeight.w800,
                   color: kInk,
+                  letterSpacing: -0.5,
                 ),
               ),
             ),
@@ -154,9 +166,34 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
             const SizedBox(height: 28),
-            if (_step == 0) ..._nameStep(),
-            if (_step == 1) ..._chooseStep(),
-            if (_step == 2) ..._codeStep(),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 240),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 260),
+                switchInCurve: Curves.easeOutCubic,
+                transitionBuilder: (child, anim) => FadeTransition(
+                  opacity: anim,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 0.04),
+                      end: Offset.zero,
+                    ).animate(anim),
+                    child: child,
+                  ),
+                ),
+                child: Column(
+                  key: ValueKey('$_step-${_found != null}'),
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (_step == 0) ..._nameStep(),
+                    if (_step == 1) ..._chooseStep(),
+                    if (_step == 2) ..._codeStep(),
+                  ],
+                ),
+              ),
+            ),
             if (_error != null) ...[
               const SizedBox(height: 16),
               SoftCard(
@@ -221,11 +258,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ),
     ),
     const SizedBox(height: 20),
-    FilledButton(
-      onPressed: _name.text.trim().isEmpty
-          ? null
-          : () => setState(() => _step = 1),
-      child: const Text('Дальше'),
+    Bouncy(
+      child: FilledButton(
+        onPressed: _name.text.trim().isEmpty
+            ? null
+            : () => setState(() => _step = 1),
+        child: const Text('Дальше'),
+      ),
     ),
   ];
 
@@ -240,21 +279,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ),
     const SizedBox(height: 12),
     if (Backend.configured) ...[
-      FilledButton.icon(
-        onPressed: _busy ? null : _create,
-        icon: const Icon(Icons.favorite_outline),
-        label: const Text('Создать пару'),
+      Bouncy(
+        child: FilledButton.icon(
+          onPressed: _busy ? null : _create,
+          icon: const Icon(Icons.favorite_outline),
+          label: const Text('Создать пару'),
+        ),
       ),
       const SizedBox(height: 12),
-      OutlinedButton.icon(
-        onPressed: _busy ? null : () => setState(() => _step = 2),
-        icon: const Icon(Icons.vpn_key_outlined),
-        label: const Text('У меня есть код'),
+      Bouncy(
+        child: OutlinedButton.icon(
+          onPressed: _busy ? null : () => setState(() => _step = 2),
+          icon: const Icon(Icons.vpn_key_outlined),
+          label: const Text('У меня есть код'),
+        ),
       ),
     ] else
-      FilledButton(
-        onPressed: _busy ? null : _local,
-        child: const Text('Пользоваться без пары'),
+      Bouncy(
+        child: FilledButton(
+          onPressed: _busy ? null : _local,
+          child: const Text('Пользоваться без пары'),
+        ),
       ),
     const SizedBox(height: 12),
     TextButton(
@@ -306,18 +351,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ),
     const SizedBox(height: 16),
     if (_found == null)
-      FilledButton(
-        onPressed: _busy ? null : _find,
-        child: _busy
-            ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: Colors.white,
-                ),
-              )
-            : const Text('Найти пару'),
+      Bouncy(
+        child: FilledButton(
+          onPressed: _busy ? null : _find,
+          child: _busy
+              ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text('Найти пару'),
+        ),
       )
     else
       ..._foundList(),
@@ -347,9 +394,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return [
       if (canJoin) ...[
         const SectionTitle('Вы подключаетесь к паре впервые?'),
-        FilledButton(
-          onPressed: _busy ? null : _join,
-          child: Text('Я новый участник: ${_name.text.trim()}'),
+        Bouncy(
+          child: FilledButton(
+            onPressed: _busy ? null : _join,
+            child: Text('Я новый участник: ${_name.text.trim()}'),
+          ),
         ),
         const SizedBox(height: 6),
       ] else

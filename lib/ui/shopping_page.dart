@@ -80,13 +80,15 @@ class _ShoppingPageState extends State<ShoppingPage> {
                 SizedBox(
                   width: 56,
                   height: 56,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(56, 56),
+                  child: Bouncy(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(56, 56),
+                      ),
+                      onPressed: _add,
+                      child: const Icon(Icons.add, size: 30),
                     ),
-                    onPressed: _add,
-                    child: const Icon(Icons.add, size: 30),
                   ),
                 ),
               ],
@@ -148,14 +150,15 @@ class _ShoppingPageState extends State<ShoppingPage> {
                 }, id: r.id),
               ),
               Expanded(
-                child: Text(
-                  r.s('title') ?? '',
+                child: AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 200),
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w600,
                     decoration: bought ? TextDecoration.lineThrough : null,
                     color: bought ? kInkSoft : kInk,
                   ),
+                  child: Text(r.s('title') ?? ''),
                 ),
               ),
               IconButton(

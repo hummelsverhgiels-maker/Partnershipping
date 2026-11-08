@@ -87,26 +87,30 @@ class _EventSheetState extends State<_EventSheet> {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      final d = await pickDate(context, _date);
-                      if (d != null) setState(() => _date = d);
-                    },
-                    icon: const Icon(Icons.event_outlined),
-                    label: Text(
-                      '${_date.day}.${_date.month.toString().padLeft(2, '0')}.${_date.year}',
+                  child: Bouncy(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final d = await pickDate(context, _date);
+                        if (d != null) setState(() => _date = d);
+                      },
+                      icon: const Icon(Icons.event_outlined),
+                      label: Text(
+                        '${_date.day}.${_date.month.toString().padLeft(2, '0')}.${_date.year}',
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      final t = await pickTime(context, _time ?? '12:00');
-                      if (t != null) setState(() => _time = t);
-                    },
-                    icon: const Icon(Icons.schedule),
-                    label: Text(_time ?? 'Время'),
+                  child: Bouncy(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final t = await pickTime(context, _time ?? '12:00');
+                        if (t != null) setState(() => _time = t);
+                      },
+                      icon: const Icon(Icons.schedule),
+                      label: Text(_time ?? 'Время'),
+                    ),
                   ),
                 ),
                 if (_time != null)
@@ -128,22 +132,24 @@ class _EventSheetState extends State<_EventSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            FilledButton(
-              onPressed: () {
-                final title = _title.text.trim();
-                if (title.isEmpty) {
-                  toast(context, 'Введите название');
-                  return;
-                }
-                widget.store.upsert('event', {
-                  'title': title,
-                  'date': ymd(_date),
-                  if (_time != null) 'time': _time,
-                  if (_note.text.trim().isNotEmpty) 'note': _note.text.trim(),
-                }, id: widget.event?.id);
-                Navigator.pop(context);
-              },
-              child: const Text('Сохранить'),
+            Bouncy(
+              child: FilledButton(
+                onPressed: () {
+                  final title = _title.text.trim();
+                  if (title.isEmpty) {
+                    toast(context, 'Введите название');
+                    return;
+                  }
+                  widget.store.upsert('event', {
+                    'title': title,
+                    'date': ymd(_date),
+                    if (_time != null) 'time': _time,
+                    if (_note.text.trim().isNotEmpty) 'note': _note.text.trim(),
+                  }, id: widget.event?.id);
+                  Navigator.pop(context);
+                },
+                child: const Text('Сохранить'),
+              ),
             ),
             if (widget.event != null) ...[
               const SizedBox(height: 8),
@@ -258,19 +264,21 @@ class _TodoSheetState extends State<_TodoSheet> {
           Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    final d = await pickDate(
-                      context,
-                      _date ?? dateOnly(DateTime.now()),
-                    );
-                    if (d != null) setState(() => _date = d);
-                  },
-                  icon: const Icon(Icons.event_outlined),
-                  label: Text(
-                    _date == null
-                        ? 'Без даты'
-                        : '${_date!.day}.${_date!.month.toString().padLeft(2, '0')}.${_date!.year}',
+                child: Bouncy(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final d = await pickDate(
+                        context,
+                        _date ?? dateOnly(DateTime.now()),
+                      );
+                      if (d != null) setState(() => _date = d);
+                    },
+                    icon: const Icon(Icons.event_outlined),
+                    label: Text(
+                      _date == null
+                          ? 'Без даты'
+                          : '${_date!.day}.${_date!.month.toString().padLeft(2, '0')}.${_date!.year}',
+                    ),
                   ),
                 ),
               ),
@@ -283,7 +291,12 @@ class _TodoSheetState extends State<_TodoSheet> {
             ],
           ),
           const SizedBox(height: 16),
-          FilledButton(onPressed: _save, child: const Text('Сохранить')),
+          Bouncy(
+            child: FilledButton(
+              onPressed: _save,
+              child: const Text('Сохранить'),
+            ),
+          ),
           if (widget.todo != null) ...[
             const SizedBox(height: 8),
             Center(
@@ -349,14 +362,15 @@ class TodoTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  todo.s('title') ?? '',
+                AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 200),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     decoration: done ? TextDecoration.lineThrough : null,
                     color: done ? kInkSoft : kInk,
                   ),
+                  child: Text(todo.s('title') ?? ''),
                 ),
                 if (sub.isNotEmpty)
                   Text(

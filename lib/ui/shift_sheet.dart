@@ -170,40 +170,46 @@ class _ShiftSheetState extends State<_ShiftSheet> {
                 title: const Text('Сохранить как шаблон'),
               ),
             const SizedBox(height: 12),
-            FilledButton(
-              onPressed: () {
-                if (_saveTemplate && !_alreadyTemplate) {
-                  s.upsert('template', {
-                    'memberId': _member,
-                    'start': _start,
-                    'end': _end,
-                  });
-                }
-                s.setShift(_member, days, _start, _end);
-                _done();
-              },
-              child: const Text('Поставить смену'),
+            Bouncy(
+              child: FilledButton(
+                onPressed: () {
+                  if (_saveTemplate && !_alreadyTemplate) {
+                    s.upsert('template', {
+                      'memberId': _member,
+                      'start': _start,
+                      'end': _end,
+                    });
+                  }
+                  s.setShift(_member, days, _start, _end);
+                  _done();
+                },
+                child: const Text('Поставить смену'),
+              ),
             ),
             const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      s.setDayOff(_member, days);
-                      _done();
-                    },
-                    child: const Text('Выходной'),
+                  child: Bouncy(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        s.setDayOff(_member, days);
+                        _done();
+                      },
+                      child: const Text('Выходной'),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      s.clearDays(_member, days);
-                      _done();
-                    },
-                    child: const Text('Очистить'),
+                  child: Bouncy(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        s.clearDays(_member, days);
+                        _done();
+                      },
+                      child: const Text('Очистить'),
+                    ),
                   ),
                 ),
               ],

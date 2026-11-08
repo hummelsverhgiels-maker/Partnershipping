@@ -106,17 +106,30 @@ class _PartnershippingAppState extends State<PartnershippingApp>
       title: 'V&V loving planning',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
+      scrollBehavior: const SoftScrollBehavior(),
       locale: const Locale('ru'),
       supportedLocales: const [Locale('ru')],
       builder: (context, child) {
-        if (!kIsWeb) return child!;
+        // Общий мягкий фон: лёгкий градиент от персикового к кремовому.
+        final bg = DecoratedBox(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [kBgTop, kBg, kBg],
+              stops: [0, 0.35, 1],
+            ),
+          ),
+          child: child,
+        );
+        if (!kIsWeb) return bg;
         // В браузере на большом экране держим приложение «телефонной» ширины.
         return ColoredBox(
-          color: const Color(0xFFFFF8F3),
+          color: kBg,
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 560),
-              child: child,
+              child: bg,
             ),
           ),
         );

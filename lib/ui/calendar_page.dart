@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../data/store.dart';
 import '../logic/schedule.dart';
@@ -7,6 +8,21 @@ import 'common.dart';
 import 'day_page.dart';
 import 'shift_sheet.dart';
 import 'theme.dart';
+
+const _monthShort = [
+  'Янв',
+  'Фев',
+  'Мар',
+  'Апр',
+  'Май',
+  'Июн',
+  'Июл',
+  'Авг',
+  'Сен',
+  'Окт',
+  'Ноя',
+  'Дек',
+];
 
 class CalendarPage extends StatefulWidget {
   final AppStore store;
@@ -20,6 +36,7 @@ class _CalendarPageState extends State<CalendarPage> {
   late DateTime _month;
   final Set<String> _selected = {};
   String? _lastSelected;
+  int _dir = 1; // куда «уезжает» календарь при смене месяца
 
   AppStore get s => widget.store;
 
@@ -30,8 +47,17 @@ class _CalendarPageState extends State<CalendarPage> {
     _month = DateTime(n.year, n.month);
   }
 
+  void _goTo(DateTime m) {
+    final target = DateTime(m.year, m.month);
+    if (target == _month) return;
+    setState(() {
+      _dir = target.isAfter(_month) ? 1 : -1;
+      _month = target;
+    });
+  }
+
   void _shiftMonth(int delta) =>
-      setState(() => _month = DateTime(_month.year, _month.month + delta));
+      _goTo(DateTime(_month.year, _month.month + delta));
 
   /// 42 клетки, неделя с понедельника.
   List<DateTime> _gridDays() {
@@ -81,6 +107,128 @@ class _CalendarPageState extends State<CalendarPage> {
   List<DateTime> get _selectedDays =>
       (_selected.map(parseYmd).toList()..sort());
 
+  // ------------------------------------------------------ выбор месяца и года
+  Future<void> _pickMonth() async {
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Месяц · ${_month.year}',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 16),
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 3,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 2.1,
+                children: [
+                  for (var m = 1; m <= 12; m++)
+                    _pickChip(
+                      _monthShort[m - 1],
+                      selected: m == _month.month,
+                      current:
+                          m == DateTime.now().month &&
+                          _month.year == DateTime.now().year,
+                      onTap: () => Navigator.pop(ctx, m),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (picked != null) _goTo(DateTime(_month.year, picked));
+  }
+
+  Future<void> _pickYear() async {
+    final now = DateTime.now().year;
+    final years = [for (var y = now - 6; y <= now + 9; y++) y];
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Год',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 16),
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 4,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 1.9,
+                children: [
+                  for (final y in years)
+                    _pickChip(
+                      '$y',
+                      selected: y == _month.year,
+                      current: y == now,
+                      onTap: () => Navigator.pop(ctx, y),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (picked != null) _goTo(DateTime(picked, _month.month));
+  }
+
+  Widget _pickChip(
+    String label, {
+    required bool selected,
+    required bool current,
+    required VoidCallback onTap,
+  }) {
+    return PressScale(
+      scale: 0.93,
+      onTap: onTap,
+      child: Container(
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? kAccentDeep : const Color(0xFFFFF6F0),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: selected
+                ? kAccentDeep
+                : current
+                ? kAccent
+                : kLine,
+            width: current && !selected ? 1.6 : 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: selected ? Colors.white : kInk,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --------------------------------------------------------------- вёрстка
   @override
   Widget build(BuildContext context) {
     final selecting = _selected.isNotEmpty;
@@ -95,67 +243,72 @@ class _CalendarPageState extends State<CalendarPage> {
       for (final t in s.todos)
         if (!t.b('done')) t.s('date'),
     };
+    final now = DateTime.now();
+    final isCurrentMonth = _month.year == now.year && _month.month == now.month;
 
     return Scaffold(
       appBar: AppBar(
         leading: selecting
             ? IconButton(
-                icon: const Icon(Icons.close),
+                icon: const Icon(Icons.close_rounded),
                 onPressed: _clearSelection,
               )
             : null,
-        title: Text(selecting ? 'Выбрано: ${_selected.length}' : 'Календарь'),
+        title: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 180),
+          child: Text(
+            selecting ? 'Выбрано: ${_selected.length}' : 'Календарь',
+            key: ValueKey(selecting),
+          ),
+        ),
         actions: [
-          if (!selecting)
-            TextButton(
-              onPressed: () {
-                final n = DateTime.now();
-                setState(() => _month = DateTime(n.year, n.month));
-              },
-              child: const Text('Сегодня'),
+          if (!selecting && !isCurrentMonth)
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  backgroundColor: kAccentSoft,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                ),
+                onPressed: () => _goTo(DateTime(now.year, now.month)),
+                child: const Text('Сегодня'),
+              ),
             ),
         ],
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
             child: Row(
               children: [
-                IconButton(
-                  onPressed: () => _shiftMonth(-1),
-                  icon: const Icon(Icons.chevron_left, size: 30),
-                ),
+                _roundButton(Icons.chevron_left_rounded, () => _shiftMonth(-1)),
                 Expanded(
-                  child: Center(
-                    child: Text(
-                      monthTitle(_month),
-                      style: const TextStyle(
-                        fontSize: 21,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _headerPill(_monthName(_month), _pickMonth),
+                      const SizedBox(width: 8),
+                      _headerPill('${_month.year}', _pickYear),
+                    ],
                   ),
                 ),
-                IconButton(
-                  onPressed: () => _shiftMonth(1),
-                  icon: const Icon(Icons.chevron_right, size: 30),
-                ),
+                _roundButton(Icons.chevron_right_rounded, () => _shiftMonth(1)),
               ],
             ),
           ),
           _legend(),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Row(
               children: [
-                for (final w in ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'])
+                for (var i = 0; i < 7; i++)
                   Expanded(
                     child: Center(
                       child: Text(
-                        w,
-                        style: const TextStyle(
-                          color: kInkSoft,
+                        const ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'][i],
+                        style: TextStyle(
+                          color: i >= 5 ? const Color(0xFFD9805F) : kInkSoft,
                           fontWeight: FontWeight.w700,
                           fontSize: 13,
                         ),
@@ -167,72 +320,150 @@ class _CalendarPageState extends State<CalendarPage> {
           ),
           const SizedBox(height: 4),
           Expanded(
-            child: GestureDetector(
-              onHorizontalDragEnd: (d) {
-                final v = d.primaryVelocity ?? 0;
-                if (v < -200) _shiftMonth(1);
-                if (v > 200) _shiftMonth(-1);
-              },
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
-                child: Column(
-                  children: [
-                    for (var r = 0; r < 6; r++)
-                      Expanded(
-                        child: Row(
-                          children: [
-                            for (var c = 0; c < 7; c++)
-                              Expanded(
-                                child: _cell(
-                                  days[r * 7 + c],
-                                  payByDate[ymd(days[r * 7 + c])] ?? const [],
-                                  eventDates.contains(ymd(days[r * 7 + c])),
-                                  todoDates.contains(ymd(days[r * 7 + c])),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 260),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeIn,
+                transitionBuilder: (child, anim) => FadeTransition(
+                  opacity: anim,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: Offset(0.05 * _dir, 0),
+                      end: Offset.zero,
+                    ).animate(anim),
+                    child: child,
+                  ),
+                ),
+                layoutBuilder: (current, previous) => Stack(
+                  fit: StackFit.expand,
+                  children: [...previous, ?current],
+                ),
+                child: KeyedSubtree(
+                  key: ValueKey('${_month.year}-${_month.month}'),
+                  child: Column(
+                    children: [
+                      for (var r = 0; r < 6; r++)
+                        Expanded(
+                          child: Row(
+                            children: [
+                              for (var c = 0; c < 7; c++)
+                                Expanded(
+                                  child: _cell(
+                                    days[r * 7 + c],
+                                    payByDate[ymd(days[r * 7 + c])] ?? const [],
+                                    eventDates.contains(ymd(days[r * 7 + c])),
+                                    todoDates.contains(ymd(days[r * 7 + c])),
+                                  ),
                                 ),
-                              ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-          if (selecting)
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-                child: FilledButton.icon(
-                  onPressed: () async {
-                    final d = _selectedDays;
-                    await showShiftSheet(context, s, d);
-                    _clearSelection();
-                  },
-                  icon: const Icon(Icons.edit_calendar_outlined),
-                  label: Text('Смена или выходной для ${_selected.length} дн.'),
-                ),
-              ),
-            )
-          else
-            const Padding(
-              padding: EdgeInsets.only(bottom: 6),
-              child: Text(
-                'Нажмите на день, чтобы открыть. Удерживайте, чтобы выбрать несколько.',
-                style: TextStyle(color: kInkSoft, fontSize: 12),
-                textAlign: TextAlign.center,
-              ),
-            ),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            child: selecting
+                ? SafeArea(
+                    key: const ValueKey('bar'),
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: Bouncy(
+                          child: FilledButton.icon(
+                            onPressed: () async {
+                              final d = _selectedDays;
+                              await showShiftSheet(context, s, d);
+                              _clearSelection();
+                            },
+                            icon: const Icon(Icons.edit_calendar_outlined),
+                            label: Text(
+                              'Смена или выходной · ${_selected.length} дн.',
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                : const Padding(
+                    key: ValueKey('hint'),
+                    padding: EdgeInsets.only(bottom: 8, top: 2),
+                    child: Text(
+                      'Нажмите на день, чтобы открыть. Удерживайте, чтобы выбрать несколько.',
+                      style: TextStyle(color: kInkSoft, fontSize: 12),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+          ),
         ],
+      ),
+    );
+  }
+
+  String _monthName(DateTime d) {
+    final t = DateFormat('LLLL', 'ru').format(d);
+    return t[0].toUpperCase() + t.substring(1);
+  }
+
+  Widget _roundButton(IconData icon, VoidCallback onTap) {
+    return PressScale(
+      scale: 0.88,
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: kLine),
+        ),
+        child: Icon(icon, size: 28, color: kInk),
+      ),
+    );
+  }
+
+  Widget _headerPill(String text, VoidCallback onTap) {
+    return PressScale(
+      scale: 0.94,
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 9, 10, 9),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: kLine),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              text,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(width: 2),
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 22,
+              color: kInkSoft,
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _legend() {
     final ms = s.orderedMembers;
-    if (ms.isEmpty) return const SizedBox.shrink();
+    if (ms.isEmpty) return const SizedBox(height: 6);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 8, top: 2),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -241,9 +472,9 @@ class _CalendarPageState extends State<CalendarPage> {
             const SizedBox(width: 6),
             Text(
               m.id == s.session?.memberId ? 'Я' : m.name,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 14),
           ],
           const Text(
             '₽ выплата',
@@ -264,6 +495,7 @@ class _CalendarPageState extends State<CalendarPage> {
     final isToday = dateOnly(d) == dateOnly(DateTime.now());
     final sel = _selected.contains(ymd(d));
     final ms = s.orderedMembers;
+    final weekend = d.weekday >= 6;
 
     void onTap() {
       if (_selected.isNotEmpty) {
@@ -279,20 +511,18 @@ class _CalendarPageState extends State<CalendarPage> {
     }
 
     // Дни соседних месяцев: только бледное число, без полосок.
-    // (Так календарь рисуется заметно быстрее, особенно на iPhone в браузере.)
     if (!inMonth) {
-      return GestureDetector(
+      return PressScale(
+        scale: 0.95,
         onTap: onTap,
         onLongPress: () => _longPress(d),
         child: Container(
           margin: const EdgeInsets.all(1.5),
-          padding: const EdgeInsets.fromLTRB(5, 4, 3, 3),
+          padding: const EdgeInsets.fromLTRB(6, 5, 3, 3),
           decoration: BoxDecoration(
             color: sel ? kAccentSoft : const Color(0xFFFFFCFA),
-            borderRadius: BorderRadius.circular(12),
-            border: sel
-                ? Border.all(color: const Color(0xFFE58E70), width: 2)
-                : null,
+            borderRadius: BorderRadius.circular(16),
+            border: sel ? Border.all(color: kAccentDeep, width: 2) : null,
           ),
           child: Align(
             alignment: Alignment.topLeft,
@@ -301,7 +531,7 @@ class _CalendarPageState extends State<CalendarPage> {
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFFC9BDB6),
+                color: Color(0xFFD3C8C1),
               ),
             ),
           ),
@@ -309,65 +539,74 @@ class _CalendarPageState extends State<CalendarPage> {
       );
     }
 
-    return GestureDetector(
+    return PressScale(
+      scale: 0.93,
       onTap: onTap,
       onLongPress: () => _longPress(d),
-      child: RepaintBoundary(
-        child: Container(
-          margin: const EdgeInsets.all(1.5),
-          padding: const EdgeInsets.fromLTRB(3, 3, 3, 3),
-          decoration: BoxDecoration(
-            color: sel ? kAccentSoft : Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: sel
-                  ? const Color(0xFFE58E70)
-                  : isToday
-                  ? const Color(0xFFE58E70)
-                  : Colors.transparent,
-              width: sel || isToday ? 2 : 0,
-            ),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
+        margin: const EdgeInsets.all(1.5),
+        padding: const EdgeInsets.fromLTRB(3, 3, 3, 3),
+        decoration: BoxDecoration(
+          color: sel ? kAccentSoft : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: sel ? kAccentDeep : (isToday ? kAccent : kLine),
+            width: sel ? 2 : (isToday ? 1.6 : 1),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  const SizedBox(width: 2),
-                  Text(
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Container(
+                  constraints: const BoxConstraints(minWidth: 20),
+                  height: 20,
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    color: isToday ? kAccentDeep : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
                     '${d.day}',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 12.5,
                       fontWeight: isToday ? FontWeight.w900 : FontWeight.w700,
+                      color: isToday
+                          ? Colors.white
+                          : (weekend ? const Color(0xFFD9805F) : kInk),
                     ),
                   ),
-                  const Spacer(),
-                  if (pays.isNotEmpty)
-                    const Text(
-                      '₽',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFFD97B5C),
-                      ),
+                ),
+                const Spacer(),
+                if (pays.isNotEmpty)
+                  const Text(
+                    '₽',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFFD97B5C),
                     ),
-                  if (hasEvent)
-                    const Text(
-                      '●',
-                      style: TextStyle(fontSize: 9, color: Color(0xFF8FB8E8)),
-                    ),
-                  if (hasTodo)
-                    const Text(
-                      '✓',
-                      style: TextStyle(fontSize: 10, color: Color(0xFF7DBE8B)),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 2),
-              for (final m in ms) Expanded(child: _chip(m.id, m.color, d)),
-              if (ms.isEmpty) const Spacer(),
-            ],
-          ),
+                  ),
+                if (hasEvent)
+                  const Text(
+                    '●',
+                    style: TextStyle(fontSize: 9, color: Color(0xFF8FB8E8)),
+                  ),
+                if (hasTodo)
+                  const Text(
+                    '✓',
+                    style: TextStyle(fontSize: 10, color: Color(0xFF7DBE8B)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            for (final m in ms) Expanded(child: _chip(m.id, m.color, d)),
+            if (ms.isEmpty) const Spacer(),
+          ],
         ),
       ),
     );
@@ -387,7 +626,7 @@ class _CalendarPageState extends State<CalendarPage> {
       bg = Colors.transparent;
       border = Border.all(color: Color(color), width: 1.6);
     } else {
-      bg = Color(color).withValues(alpha: 0.22);
+      bg = Color(color).withValues(alpha: 0.20);
     }
     return Container(
       margin: const EdgeInsets.only(bottom: 2),
@@ -395,7 +634,7 @@ class _CalendarPageState extends State<CalendarPage> {
       decoration: BoxDecoration(
         color: bg,
         border: border,
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(9),
       ),
       child: text == null
           ? null

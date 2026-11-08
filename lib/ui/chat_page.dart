@@ -707,13 +707,15 @@ class _ChatPageState extends State<ChatPage> {
               SizedBox(
                 width: 54,
                 height: 54,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(54, 54),
+                child: Bouncy(
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(54, 54),
+                    ),
+                    onPressed: _finishRecording,
+                    child: const Icon(Icons.send_rounded),
                   ),
-                  onPressed: _finishRecording,
-                  child: const Icon(Icons.send_rounded),
                 ),
               ),
             ],
@@ -753,15 +755,19 @@ class _ChatPageState extends State<ChatPage> {
             SizedBox(
               width: 54,
               height: 54,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(54, 54),
+              child: Bouncy(
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(54, 54),
+                  ),
+                  onPressed: _hasText
+                      ? _send
+                      : (_uploading ? null : _startRecording),
+                  child: Icon(
+                    _hasText ? Icons.send_rounded : Icons.mic_rounded,
+                  ),
                 ),
-                onPressed: _hasText
-                    ? _send
-                    : (_uploading ? null : _startRecording),
-                child: Icon(_hasText ? Icons.send_rounded : Icons.mic_rounded),
               ),
             ),
           ],
