@@ -7,15 +7,18 @@ import '../data/store.dart';
 import '../logic/schedule.dart';
 import '../util.dart';
 
-/// Готовит тексты для виджета на главном экране Android.
+/// Готовит тексты для виджета на главном экране (Android и iPhone).
 /// Тексты заранее считаются на 14 дней вперёд, чтобы виджет оставался верным
 /// и после полуночи, даже если приложение не открывали.
 class WidgetService {
   static const _provider = 'com.partnershipping.partnershipping.DaysOffWidget';
+  static const _iosGroup = 'group.com.partnershipping.partnershipping';
+  static const _iosWidget = 'DaysOffWidget';
 
   static Future<void> update(AppStore store) async {
-    if (kIsWeb || !Platform.isAndroid) return;
+    if (kIsWeb || !(Platform.isAndroid || Platform.isIOS)) return;
     try {
+      if (Platform.isIOS) await HomeWidget.setAppGroupId(_iosGroup);
       final me = store.me;
       if (me == null) return;
       final partner = store.partner;
@@ -44,7 +47,8 @@ class WidgetService {
           await HomeWidget.saveWidgetData<String>('wb_$key', '');
         }
       }
-      await HomeWidget.updateWidget(qualifiedAndroidName: _provider);
+      await HomeWidget.updateWidget(
+          qualifiedAndroidName: _provider, iOSName: _iosWidget);
     } catch (e) {
       debugPrint('Виджет не обновлён: $e');
     }
