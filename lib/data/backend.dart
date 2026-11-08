@@ -18,34 +18,58 @@ class Backend {
   /// Адрес, который реально используется (прямой или через посредника).
   static String activeUrl = kSupabaseUrl;
 
-  /// Выбор пути к серверу. Запоминаем, что сработало в прошлый раз,
-  /// чтобы там, где обычный адрес заблокирован, не ждать каждый запуск.
+  /// Выбор пути к серверу. В браузере (iPhone) сначала пробуем посредника:
+  /// он стабильнее у провайдеров, которые режут прямой адрес. На Android сначала
+  /// прямой адрес. Что сработало, запоминаем.
   static Future<String> _pickUrl() async {
     if (kSupabaseProxyUrl.isEmpty) return kSupabaseUrl;
     SharedPreferences? prefs;
     try {
       prefs = await SharedPreferences.getInstance();
     } catch (_) {}
-    final lastProxy = prefs?.getString('server_choice') == 'proxy';
+    final pref = prefs?.getString('server_choice');
+    final proxyFirst = kIsWeb ? pref != 'direct' : pref == 'proxy';
 
-    Future<String?> tryProxy() async =>
-        await probeServer(kSupabaseProxyUrl) ? kSupabaseProxyUrl : null;
-    Future<String?> tryDirect() async =>
-        await probeServer(kSupabaseUrl) ? kSupabaseUrl : null;
-
-    String? chosen;
-    if (lastProxy) {
-      chosen = await tryProxy() ?? await tryDirect();
-    } else {
-      final proxy = tryProxy(); // параллельно, чтобы не ждать лишнего
-      chosen = await tryDirect() ?? await proxy;
-    }
-    chosen ??= kSupabaseUrl;
+    final first = proxyFirst ? kSupabaseProxyUrl : kSupabaseUrl;
+    final second = proxyFirst ? kSupabaseUrl : kSupabaseProxyUrl;
+    final probeFirst = probeServer(first);
+    final probeSecond = probeServer(
+      second,
+    ); // параллельно, чтобы не ждать лишнего
+    final chosen = await probeFirst
+        ? first
+        : (await probeSecond ? second : first);
     await prefs?.setString(
       'server_choice',
       chosen == kSupabaseProxyUrl ? 'proxy' : 'direct',
     );
     return chosen;
+  }
+
+  static bool isNetworkError(Object e) {
+    final t = e.toString();
+    return t.contains('ClientException') ||
+        t.contains('SocketException') ||
+        t.contains('Failed host lookup') ||
+        t.contains('Load failed') ||
+        t.contains('Failed to fetch') ||
+        t.contains('TimeoutException');
+  }
+
+  /// Если выбранный путь стабильно не работает, запоминаем другой и
+  /// перезапускаем сайт (в приложении на телефоне сработает при следующем запуске).
+  static Future<void> switchPathIfPossible() async {
+    if (kSupabaseProxyUrl.isEmpty) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final last = prefs.getInt('server_switch_at') ?? 0;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      if (now - last < 10 * 60 * 1000) return; // не чаще раза в 10 минут
+      final usingProxy = activeUrl == kSupabaseProxyUrl;
+      await prefs.setString('server_choice', usingProxy ? 'direct' : 'proxy');
+      await prefs.setInt('server_switch_at', now);
+      reloadApp();
+    } catch (_) {}
   }
 
   static Future<void> init() async {

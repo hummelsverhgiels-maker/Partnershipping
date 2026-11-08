@@ -17,3 +17,8 @@ Future<bool> probeServer(String base) async {
     return false;
   }
 }
+
+/// Перезагрузить сайт (чтобы заново выбрать путь к серверу).
+void reloadApp() {
+  web.window.location.reload();
+}

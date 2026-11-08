@@ -265,22 +265,54 @@ class _CalendarPageState extends State<CalendarPage> {
     final sel = _selected.contains(ymd(d));
     final ms = s.orderedMembers;
 
-    return GestureDetector(
-      onTap: () {
-        if (_selected.isNotEmpty) {
-          _toggle(d);
-        } else {
-          Navigator.push(
-            context,
-            MaterialPageRoute<void>(
-              builder: (_) => DayPage(store: s, date: dateOnly(d)),
+    void onTap() {
+      if (_selected.isNotEmpty) {
+        _toggle(d);
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => DayPage(store: s, date: dateOnly(d)),
+          ),
+        );
+      }
+    }
+
+    // Дни соседних месяцев: только бледное число, без полосок.
+    // (Так календарь рисуется заметно быстрее, особенно на iPhone в браузере.)
+    if (!inMonth) {
+      return GestureDetector(
+        onTap: onTap,
+        onLongPress: () => _longPress(d),
+        child: Container(
+          margin: const EdgeInsets.all(1.5),
+          padding: const EdgeInsets.fromLTRB(5, 4, 3, 3),
+          decoration: BoxDecoration(
+            color: sel ? kAccentSoft : const Color(0xFFFFFCFA),
+            borderRadius: BorderRadius.circular(12),
+            border: sel
+                ? Border.all(color: const Color(0xFFE58E70), width: 2)
+                : null,
+          ),
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: Text(
+              '${d.day}',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFFC9BDB6),
+              ),
             ),
-          );
-        }
-      },
+          ),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: onTap,
       onLongPress: () => _longPress(d),
-      child: Opacity(
-        opacity: inMonth ? 1 : 0.4,
+      child: RepaintBoundary(
         child: Container(
           margin: const EdgeInsets.all(1.5),
           padding: const EdgeInsets.fromLTRB(3, 3, 3, 3),

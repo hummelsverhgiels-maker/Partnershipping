@@ -16,3 +16,6 @@ Future<bool> probeServer(String base) async {
     return false;
   }
 }
+
+/// На телефоне перезапуск делается при следующем запуске приложения.
+void reloadApp() {}

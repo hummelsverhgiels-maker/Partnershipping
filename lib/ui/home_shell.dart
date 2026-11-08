@@ -18,15 +18,34 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _tab = 0;
 
+  // Скрытые вкладки не перерисовываются при каждом обновлении данных:
+  // для них хранится последняя собранная версия. Это сильно разгружает телефон.
+  final Map<int, Widget> _cache = {};
+
+  Widget _page(int i, AppStore s, {required bool active}) {
+    switch (i) {
+      case 0:
+        return CalendarPage(store: s);
+      case 1:
+        return ShoppingPage(store: s);
+      case 2:
+        return TodosPage(store: s);
+      case 3:
+        return ChatPage(store: s, active: active);
+      default:
+        return SettingsPage(store: s);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = widget.store;
     final pages = <Widget>[
-      CalendarPage(store: s),
-      ShoppingPage(store: s),
-      TodosPage(store: s),
-      ChatPage(store: s, active: _tab == 3),
-      SettingsPage(store: s),
+      for (var i = 0; i < 5; i++)
+        if (i == _tab)
+          (_cache[i] = _page(i, s, active: true))
+        else
+          (_cache[i] ?? const SizedBox.shrink()),
     ];
     return Scaffold(
       body: IndexedStack(index: _tab, children: pages),
@@ -41,7 +60,14 @@ class _HomeShellState extends State<HomeShell> {
     final unread = _tab == 3 ? 0 : s.unreadChat;
     return NavigationBar(
       selectedIndex: _tab,
-      onDestinationSelected: (i) => setState(() => _tab = i),
+      onDestinationSelected: (i) => setState(() {
+        final old = _tab;
+        _tab = i;
+        // Покидаемая вкладка запоминается «неактивной».
+        if (_cache.containsKey(old)) {
+          _cache[old] = _page(old, widget.store, active: false);
+        }
+      }),
       destinations: [
         NavigationDestination(
           icon: Icon(Icons.calendar_month_outlined),

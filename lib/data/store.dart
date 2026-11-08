@@ -199,8 +199,10 @@ class AppStore extends ChangeNotifier {
   bool _retryScheduled = false;
 
   void _scheduleRetry() {
-    online = false;
-    notifyListeners();
+    if (online) {
+      online = false;
+      notifyListeners();
+    }
     if (_retryScheduled) return;
     _retryScheduled = true;
     Timer(const Duration(seconds: 15), () {
@@ -223,8 +225,10 @@ class AppStore extends ChangeNotifier {
     await _recSub?.cancel();
     await _memSub?.cancel();
     _recSub = Backend.recordsStream(s.pairId).listen((rows) {
+      final was = online;
       online = true;
       _applyRecords(rows);
+      if (!was) notifyListeners();
     }, onError: (_) => _scheduleRetry());
     _memSub = Backend.membersStream(
       s.pairId,
@@ -243,6 +247,8 @@ class AppStore extends ChangeNotifier {
     online = false;
   }
 
+  int _failStreak = 0;
+
   /// Принудительно сверить всё с сервером (и отправить накопленное).
   Future<void> refresh() async {
     final s = session;
@@ -252,16 +258,29 @@ class AppStore extends ChangeNotifier {
       await flush();
       final rows = await Backend.fetchRecords(s.pairId);
       final mem = await Backend.fetchMembers(s.pairId);
+      final statusChanged = !online || lastError != null;
       online = true;
       lastError = null;
       lastErrorRaw = null;
+      _failStreak = 0;
       _applyMembers(mem);
       _applyRecords(rows);
+      if (statusChanged) notifyListeners();
     } catch (e) {
+      final raw = e.toString();
+      final changed = online || lastErrorRaw != raw;
       lastError = Backend.explain(e);
-      lastErrorRaw = e.toString();
+      lastErrorRaw = raw;
       online = false;
-      notifyListeners();
+      if (changed) notifyListeners();
+      // Если путь к серверу стабильно не работает, переключаемся на запасной.
+      if (Backend.isNetworkError(e)) {
+        _failStreak++;
+        if (_failStreak >= 3) {
+          _failStreak = 0;
+          await Backend.switchPathIfPossible();
+        }
+      }
     }
   }
 
@@ -269,6 +288,8 @@ class AppStore extends ChangeNotifier {
     final s = session;
     if (s == null || s.local || !Backend.configured || _flushing) return;
     _flushing = true;
+    final beforeCount = _outbox.length;
+    final beforeOnline = online;
     try {
       while (_outbox.isNotEmpty) {
         final op = _outbox.first;
@@ -288,14 +309,16 @@ class AppStore extends ChangeNotifier {
       online = false;
     } finally {
       _flushing = false;
-      notifyListeners();
+      if (_outbox.length != beforeCount || online != beforeOnline) {
+        notifyListeners();
+      }
     }
   }
 
   void _applyMembers(List<Map<String, dynamic>> rows) {
     if (rows.isEmpty) return;
     final next = rows.map(Member.fromJson).toList();
-    // Мой порядок не важен, важно только содержимое.
+    if (_sameMembers(members, next)) return;
     members = next;
     _prefs?.setString(
       'members',
@@ -345,11 +368,39 @@ class AppStore extends ChangeNotifier {
         onPartnerChange!(partner?.name ?? 'Партнёр', cats);
       }
     }
+    final same = _sameRecs(_recs, next);
     _synced = true;
+    if (same) return; // ничего не изменилось: не перерисовываем экран
     _recs = next;
     _rebuild();
     _saveRecs();
     notifyListeners();
+  }
+
+  bool _sameMembers(List<Member> a, List<Member> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id ||
+          a[i].name != b[i].name ||
+          a[i].color != b[i].color) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool _sameRecs(Map<String, Rec> a, Map<String, Rec> b) {
+    if (a.length != b.length) return false;
+    for (final e in b.entries) {
+      final o = a[e.key];
+      if (o == null ||
+          o.updatedAt != e.value.updatedAt ||
+          o.updatedBy != e.value.updatedBy ||
+          o.kind != e.value.kind) {
+        return false;
+      }
+    }
+    return true;
   }
 
   String? _category(String kind) {
