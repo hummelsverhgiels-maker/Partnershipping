@@ -71,14 +71,24 @@ class WidgetService {
     return '💬 ${other.name}: $t${n > 1 ? ' (+${n - 1})' : ''}';
   }
 
-  /// «Настроение: Я 🙂 · Аня 😐».
+  /// «Настроение: Я 🙂🥱 · Аня 😐🍔» (смайлик настроения и значки состояний).
   static String moodLine(AppStore store, Member viewer, Member? other) {
-    final a = store.moodOf(viewer.id);
-    final b = other == null ? null : store.moodOf(other.id);
-    if (a == null && b == null) return '';
+    String part(String id) {
+      final v = store.moodOf(id);
+      final tags = store
+          .moodTagsOf(id)
+          .map((t) => moodTagById(t)?.emoji ?? '')
+          .where((e) => e.isNotEmpty)
+          .join();
+      return '${v == null ? '' : moodEmoji(v)}$tags';
+    }
+
+    final a = part(viewer.id);
+    final b = other == null ? '' : part(other.id);
+    if (a.isEmpty && b.isEmpty) return '';
     final parts = <String>[
-      if (a != null) 'Я ${moodEmoji(a)}',
-      if (b != null) '${other!.name} ${moodEmoji(b)}',
+      if (a.isNotEmpty) 'Я $a',
+      if (b.isNotEmpty) '${other!.name} $b',
     ];
     return 'Настроение: ${parts.join(' · ')}';
   }

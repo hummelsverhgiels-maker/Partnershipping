@@ -99,6 +99,8 @@ class _MoodCardState extends State<MoodCard> {
               setState(() => _drag = null);
             },
           ),
+          const SizedBox(height: 12),
+          _myTags(me),
           if (partner != null) ...[
             const SizedBox(height: 14),
             Container(height: 1, color: kLine),
@@ -113,7 +115,8 @@ class _MoodCardState extends State<MoodCard> {
   Widget _partnerRow(Member partner) {
     final pv = s.moodOf(partner.id);
     final ts = s.moods[partner.id]?.i('ts');
-    return Row(
+    final tags = s.moodTagsOf(partner.id);
+    final row = Row(
       children: [
         Avatar(store: s, memberId: partner.id, size: 28),
         const SizedBox(width: 8),
@@ -123,11 +126,13 @@ class _MoodCardState extends State<MoodCard> {
             style: const TextStyle(fontWeight: FontWeight.w800),
           ),
         ),
-        if (pv == null)
+        if (pv == null && tags.isEmpty)
           Text(
             'пока не отметил(а)',
             style: TextStyle(color: kInkSoft, fontSize: 13),
           )
+        else if (pv == null)
+          const SizedBox.shrink()
         else ...[
           Text(moodEmoji(pv), style: const TextStyle(fontSize: 22)),
           const SizedBox(width: 8),
@@ -153,7 +158,232 @@ class _MoodCardState extends State<MoodCard> {
         ],
         if (pv != null && ts != null) ...[const SizedBox(width: 6)],
       ],
-    ).withCaption(_ago(ts), pv != null);
+    );
+    final withCaption = row.withCaption(
+      _ago(ts),
+      pv != null || tags.isNotEmpty,
+    );
+    if (tags.isEmpty) return withCaption;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        withCaption,
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final id in tags) _tagChip(moodTagById(id), small: true),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _tagChip(MoodTag? t, {bool small = false}) {
+    if (t == null) return const SizedBox.shrink();
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: small ? 10 : 12,
+        vertical: small ? 5 : 7,
+      ),
+      decoration: BoxDecoration(
+        color: kAccentSoft,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(t.emoji, style: TextStyle(fontSize: small ? 15 : 18)),
+          const SizedBox(width: 5),
+          Text(
+            t.label,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: small ? 12.5 : 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Мои состояния и кнопка «+».
+  Widget _myTags(Member? me) {
+    final tags = me == null ? const <String>[] : s.moodTagsOf(me.id);
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        for (final id in tags)
+          PressScale(
+            scale: 0.94,
+            onTap: () => showMoodTagsSheet(context, s),
+            child: _tagChip(moodTagById(id)),
+          ),
+        PressScale(
+          key: const ValueKey('mood-plus'),
+          scale: 0.9,
+          onTap: () => showMoodTagsSheet(context, s),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: tags.isEmpty ? 14 : 10,
+              vertical: 7,
+            ),
+            decoration: BoxDecoration(
+              color: kField,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: kBorder),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.add_rounded, size: 20, color: kAccentDeep),
+                if (tags.isEmpty) ...[
+                  const SizedBox(width: 4),
+                  Text(
+                    'Добавить состояние',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: kInk,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Окно выбора состояний (голодно, устал(а), весело, скучно…). До четырёх штук.
+Future<void> showMoodTagsSheet(BuildContext context, AppStore store) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    builder: (_) => _MoodTagsSheet(store: store),
+  );
+}
+
+class _MoodTagsSheet extends StatelessWidget {
+  final AppStore store;
+  const _MoodTagsSheet({required this.store});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: store,
+      builder: (context, _) {
+        final me = store.me;
+        final chosen = me == null ? <String>[] : store.moodTagsOf(me.id);
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            0,
+            20,
+            20 + MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.85,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Что со мной сейчас?',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Выберите до $kMaxMoodTags состояний, партнёр их увидит.',
+                    style: TextStyle(color: kInkSoft),
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      for (final t in kMoodTags)
+                        PressScale(
+                          key: ValueKey('mood-tag-${t.id}'),
+                          scale: 0.93,
+                          onTap: () {
+                            final next = [...chosen];
+                            if (next.contains(t.id)) {
+                              next.remove(t.id);
+                            } else if (next.length >= kMaxMoodTags) {
+                              toast(
+                                context,
+                                'Не больше $kMaxMoodTags. Уберите одно из выбранных.',
+                              );
+                              return;
+                            } else {
+                              next.add(t.id);
+                            }
+                            store.setMoodTags(next);
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 160),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: chosen.contains(t.id)
+                                  ? kAccentSoft
+                                  : kField,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: chosen.contains(t.id)
+                                    ? kAccentDeep
+                                    : kBorder,
+                                width: chosen.contains(t.id) ? 1.8 : 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  t.emoji,
+                                  style: const TextStyle(fontSize: 22),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  t.label,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  if (chosen.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Center(
+                      child: TextButton(
+                        onPressed: () => store.setMoodTags(const []),
+                        child: const Text('Очистить всё'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 

@@ -145,6 +145,24 @@ void main() {
         expect(find.textContaining('Саша'), findsWidgets);
         expect(find.text('ДЕЛА НА СЕГОДНЯ'), findsOneWidget);
 
+        // Настроение: «+» открывает выбор состояний, выбранное сохраняется
+        await tester.dragUntilVisible(
+          find.byKey(const ValueKey('mood-plus')),
+          find.byType(ListView).first,
+          const Offset(0, -150),
+        );
+        await tester.tap(find.byKey(const ValueKey('mood-plus')));
+        await _settle(tester);
+        expect(find.text('Что со мной сейчас?'), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('mood-tag-hungry')));
+        await _settle(tester);
+        await tester.tap(find.byKey(const ValueKey('mood-tag-tired')));
+        await _settle(tester);
+        expect(store.moodTagsOf(store.session!.memberId), ['hungry', 'tired']);
+        expect(tester.takeException(), isNull);
+        await tester.tapAt(const Offset(200, 60)); // закрыть окно
+        await _settle(tester);
+
         // Календарь + окно «График по шаблону» + выбор месяца и года
         await tester.tap(nav('Календарь'));
         await _settle(tester);
@@ -323,6 +341,17 @@ void main() {
     store.setAvatar('');
     expect(store.avatarOf(me), '');
     store.setAvatar('emoji:🦊');
+    // состояния настроения не затирают ползунок и наоборот
+    store.setMood(70);
+    store.setMoodTags(['hungry', 'tired']);
+    expect(store.moodOf(me), 70);
+    expect(store.moodTagsOf(me), ['hungry', 'tired']);
+    store.setMood(30);
+    expect(store.moodTagsOf(me), ['hungry', 'tired']);
+    store.setMoodTags(const []);
+    expect(store.moodOf(me), 30);
+    expect(store.moodTagsOf(me), isEmpty);
+    store.setMood(80);
     // настроение и документы
     expect(store.moodOf(me), 80);
     store.setMood(15);

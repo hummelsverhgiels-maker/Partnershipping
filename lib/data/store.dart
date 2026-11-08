@@ -695,11 +695,30 @@ class AppStore extends ChangeNotifier {
     if (meId == null) return;
     final existing = moods[meId];
     upsert('mood', {
+      ...?existing?.data,
       'memberId': meId,
       'value': value.clamp(0, 100),
       'ts': DateTime.now().millisecondsSinceEpoch,
     }, id: existing?.id);
   }
+
+  /// Дополнительные состояния («голодно», «устал(а)»…). Ползунок не меняется.
+  void setMoodTags(List<String> tags) {
+    final meId = session?.memberId;
+    if (meId == null) return;
+    final existing = moods[meId];
+    upsert('mood', {
+      ...?existing?.data,
+      'memberId': meId,
+      'tags': tags,
+      'ts': DateTime.now().millisecondsSinceEpoch,
+    }, id: existing?.id);
+  }
+
+  List<String> moodTagsOf(String memberId) =>
+      ((moods[memberId]?.data['tags'] as List?) ?? const [])
+          .map((e) => e.toString())
+          .toList();
 
   int? moodOf(String memberId) => moods[memberId]?.i('value');
 
