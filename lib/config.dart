@@ -17,3 +17,6 @@ const String kSupabaseAnonKey = String.fromEnvironment(
 // адрес Supabase блокируется провайдером. Приложение само выберет, какой работает.
 const String kSupabaseProxyUrl =
     'https://vv-proxy.hummelsverhgiels.workers.dev';
+
+// Номер сборки (подставляется при сборке в облаке), чтобы видеть, какая версия запущена.
+const String kBuild = String.fromEnvironment('APP_BUILD', defaultValue: 'dev');

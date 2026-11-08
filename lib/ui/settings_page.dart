@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../config.dart';
+import '../data/backend.dart';
 import '../data/store.dart';
 import '../services/notifier.dart';
 import '../services/push_service.dart';
@@ -301,7 +303,16 @@ class SettingsPage extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+          Center(
+            child: Text(
+              'Версия $kBuild · сервер: ${Backend.activeUrl == kSupabaseUrl ? 'напрямую' : 'через посредника'}'
+              '${store.lastErrorRaw != null ? '\nОшибка: ${store.lastErrorRaw!.length > 220 ? store.lastErrorRaw!.substring(0, 220) : store.lastErrorRaw}' : ''}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 11, color: kInkSoft),
+            ),
+          ),
+          const SizedBox(height: 8),
           Center(
             child: TextButton(
               onPressed: () async {

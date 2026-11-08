@@ -37,6 +37,7 @@ class AppStore extends ChangeNotifier {
   bool loaded = false;
   bool online = false; // удалось ли связаться с сервером
   String? lastError;
+  String? lastErrorRaw;
   bool _synced = false;
 
   StreamSubscription? _recSub;
@@ -215,6 +216,7 @@ class AppStore extends ChangeNotifier {
       await Backend.ensureSignedIn();
     } catch (e) {
       lastError = Backend.explain(e);
+      lastErrorRaw = e.toString();
       _scheduleRetry();
       return;
     }
@@ -252,10 +254,12 @@ class AppStore extends ChangeNotifier {
       final mem = await Backend.fetchMembers(s.pairId);
       online = true;
       lastError = null;
+      lastErrorRaw = null;
       _applyMembers(mem);
       _applyRecords(rows);
     } catch (e) {
       lastError = Backend.explain(e);
+      lastErrorRaw = e.toString();
       online = false;
       notifyListeners();
     }
@@ -280,6 +284,7 @@ class AppStore extends ChangeNotifier {
       online = true;
     } catch (e) {
       lastError = Backend.explain(e);
+      lastErrorRaw = e.toString();
       online = false;
     } finally {
       _flushing = false;

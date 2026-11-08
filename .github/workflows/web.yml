@@ -29,7 +29,7 @@ jobs:
           cache: true
       - run: flutter pub get
       - name: Собрать сайт
-        run: flutter build web --release --no-web-resources-cdn --base-href "/${{ github.event.repository.name }}/"
+        run: flutter build web --release --no-web-resources-cdn --dart-define=APP_BUILD=${GITHUB_SHA::7} --base-href "/${{ github.event.repository.name }}/"
       - name: Сохранить сайт в Artifacts (на случай, если Pages не включены)
         uses: actions/upload-artifact@v4
         with:
