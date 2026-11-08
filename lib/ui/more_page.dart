@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import '../data/store.dart';
 import 'budget_page.dart';
 import 'common.dart';
+import 'docs_page.dart';
 import 'earnings_page.dart';
 import 'important_page.dart';
+import 'kiss_page.dart';
 import 'settings_page.dart';
 import 'theme.dart';
 
@@ -19,7 +21,13 @@ class MorePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget item(String emoji, String title, String sub, Widget page) => Padding(
+    Widget item(
+      String emoji,
+      String title,
+      String sub,
+      Widget page, {
+      int badge = 0,
+    }) => Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: SoftCard(
         onTap: () => _open(context, page),
@@ -51,6 +59,23 @@ class MorePage extends StatelessWidget {
                 ],
               ),
             ),
+            if (badge > 0)
+              Container(
+                margin: const EdgeInsets.only(right: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(
+                  color: kAccentDeep,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  badge > 99 ? '99+' : '$badge',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
             Icon(Icons.chevron_right_rounded, color: kInkSoft),
           ],
         ),
@@ -62,6 +87,19 @@ class MorePage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
         children: [
+          item(
+            '💋',
+            'Поцелуи',
+            'Тапайте и отправляйте поцелуйчики',
+            KissPage(store: store, active: true),
+            badge: store.kissUnseen,
+          ),
+          item(
+            '📁',
+            'Документы',
+            'Файлы и ссылки, в том числе Google Диск',
+            DocsPage(store: store),
+          ),
           item(
             '💰',
             'Заработок',

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:partnershipping/logic/important.dart';
+import 'package:partnershipping/ui/kiss_page.dart';
 import 'package:partnershipping/logic/pattern.dart';
 import 'package:partnershipping/logic/schedule.dart';
 import 'package:partnershipping/logic/stats.dart';
@@ -122,6 +123,26 @@ void main() {
       expect(untilText(25), 'через 25 дней');
       expect(yearsAt(DateTime(2023, 5, 1), DateTime(2026, 5, 1)), 3);
     });
+  });
+
+  test('подписи поцелуев меняются на каждой сотне', () {
+    expect(kissCheer(0).text, contains('Тапайте'));
+    expect(kissCheer(1).key, 1);
+    expect(kissCheer(9).key, 1);
+    expect(kissCheer(10).key, 10);
+    expect(kissCheer(99).key, 50);
+    expect(kissCheer(100).text, contains('Сто'));
+    expect(kissCheer(199).key, 100);
+    final texts = <String>{};
+    for (final n in [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]) {
+      expect(kissCheer(n).key, n);
+      texts.add(kissCheer(n).text);
+    }
+    expect(texts.length, 10); // у каждой сотни своя надпись
+    expect(kissCheer(1000).text, contains('ТЫСЯЧА'));
+    expect(kissCheer(1100).text, contains('1100'));
+    expect(kissCheer(2000).text, contains('2 тыс.'));
+    expect(kissCheer(2300).key, 2300);
   });
 
   test('общие выходные: нужен заполненный график у обоих', () {

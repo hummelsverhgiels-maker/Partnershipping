@@ -4,9 +4,7 @@ import '../data/store.dart';
 import 'calendar_page.dart';
 import 'chat_page.dart';
 import 'common.dart';
-import 'docs_page.dart';
 import 'feed_page.dart';
-import 'kiss_page.dart';
 import 'lists_page.dart';
 import 'more_page.dart';
 import 'theme.dart';
@@ -33,8 +31,6 @@ const _tabs = <_Tab>[
   _Tab('Списки', Icons.checklist_rtl_rounded, Icons.checklist_rtl_rounded),
   _Tab('Лента', Icons.photo_library_outlined, Icons.photo_library_rounded),
   _Tab('Чат', Icons.chat_bubble_outline, Icons.chat_bubble),
-  _Tab('Поцелуи', Icons.favorite_border_rounded, Icons.favorite_rounded),
-  _Tab('Документы', Icons.folder_outlined, Icons.folder_rounded),
   _Tab('Ещё', Icons.grid_view_rounded, Icons.grid_view_rounded),
 ];
 
@@ -46,7 +42,7 @@ class _HomeShellState extends State<HomeShell> {
   final Map<int, Widget> _cache = {};
 
   static const _chatTab = 4;
-  static const _kissTab = 5;
+  static const _moreTab = 5;
 
   void _go(int i) {
     if (i == _tab) return;
@@ -72,10 +68,6 @@ class _HomeShellState extends State<HomeShell> {
         return FeedPage(store: s);
       case _chatTab:
         return ChatPage(store: s, active: active);
-      case _kissTab:
-        return KissPage(store: s, active: active);
-      case 6:
-        return DocsPage(store: s);
       default:
         return MorePage(store: s);
     }
@@ -102,7 +94,8 @@ class _HomeShellState extends State<HomeShell> {
 
   Widget _bar(AppStore s) {
     final unreadChat = _tab == _chatTab ? 0 : s.unreadChat;
-    final unreadKiss = _tab == _kissTab ? 0 : s.kissUnseen;
+    // новые поцелуи показываем значком на «Ещё», пока не открыта вкладка «Ещё»
+    final unreadKiss = _tab == _moreTab ? 0 : s.kissUnseen;
     return Container(
       key: const ValueKey('bottom-bar'),
       decoration: BoxDecoration(
@@ -113,28 +106,18 @@ class _HomeShellState extends State<HomeShell> {
         top: false,
         child: SizedBox(
           height: 64,
-          child: LayoutBuilder(
-            builder: (context, c) {
-              // Выбранная вкладка шире и с подписью, остальные компактные значки.
-              const selFactor = 2.3;
-              final unit = c.maxWidth / (_tabs.length - 1 + selFactor);
-              return Row(
-                children: [
-                  for (var i = 0; i < _tabs.length; i++)
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeOut,
-                      width: i == _tab ? unit * selFactor : unit,
-                      child: _item(
-                        i,
-                        i == _chatTab
-                            ? unreadChat
-                            : (i == _kissTab ? unreadKiss : 0),
-                      ),
-                    ),
-                ],
-              );
-            },
+          child: Row(
+            children: [
+              for (var i = 0; i < _tabs.length; i++)
+                Expanded(
+                  child: _item(
+                    i,
+                    i == _chatTab
+                        ? unreadChat
+                        : (i == _moreTab ? unreadKiss : 0),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -152,9 +135,9 @@ class _HomeShellState extends State<HomeShell> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
+            duration: const Duration(milliseconds: 200),
             curve: Curves.easeOut,
-            width: sel ? 46 : 32,
+            width: sel ? 48 : 32,
             height: 30,
             alignment: Alignment.center,
             decoration: BoxDecoration(
@@ -166,26 +149,22 @@ class _HomeShellState extends State<HomeShell> {
               label: Text(badge > 99 ? '99+' : '$badge'),
               child: Icon(
                 sel ? t.selectedIcon : t.icon,
-                size: 23,
+                size: 24,
                 color: sel ? kAccentDeep : kInkSoft,
               ),
             ),
           ),
-          SizedBox(
-            height: 16,
-            child: sel
-                ? FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      t.label,
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
-                        color: kAccentDeep,
-                      ),
-                    ),
-                  )
-                : null,
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              t.label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: sel ? FontWeight.w800 : FontWeight.w600,
+                color: sel ? kAccentDeep : kInkSoft,
+              ),
+            ),
           ),
         ],
       ),

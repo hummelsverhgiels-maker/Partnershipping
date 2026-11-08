@@ -193,8 +193,10 @@ void main() {
         }
         expect(tester.takeException(), isNull);
 
-        // Поцелуи: тап по кнопке увеличивает счётчик
-        await tester.tap(nav('Поцелуи'));
+        // Поцелуи теперь в «Ещё»: тап по кнопке увеличивает счётчик
+        await tester.tap(nav('Ещё'));
+        await _settle(tester);
+        await tester.tap(find.text('Поцелуи'));
         await _settle(tester);
         final kissesBefore = store.kissTotalOf(store.session!.memberId);
         for (var i = 0; i < 3; i++) {
@@ -207,6 +209,10 @@ void main() {
         expect(store.kissTotalOf(store.session!.memberId), kissesBefore + 3);
         await tester.pump(const Duration(seconds: 3)); // частицы улетели
         expect(tester.takeException(), isNull);
+        await tester
+            .state<NavigatorState>(find.byType(Navigator).first)
+            .maybePop();
+        await _settle(tester);
 
         // Лента: публикация, лайк, комментарии
         await tester.tap(nav('Лента'));
@@ -227,11 +233,17 @@ void main() {
         await tester.tapAt(const Offset(200, 100));
         await _settle(tester);
 
-        // Документы
-        await tester.tap(nav('Документы'));
+        // Документы (в «Ещё»)
+        await tester.tap(nav('Ещё'));
+        await _settle(tester);
+        await tester.tap(find.text('Документы'));
         await _settle(tester);
         expect(find.text('Паспорт (ссылка)'), findsOneWidget);
         expect(tester.takeException(), isNull);
+        await tester
+            .state<NavigatorState>(find.byType(Navigator).first)
+            .maybePop();
+        await _settle(tester);
 
         // Ещё и вложенные экраны
         await tester.tap(nav('Ещё'));

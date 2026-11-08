@@ -12,6 +12,45 @@ import 'theme.dart';
 
 const _tapEmojis = ['💋', '😘', '💕', '❤️', '💖', '😚'];
 
+/// Подпись под кнопкой: меняется на каждом круглом числе (10, 25, 50, 100, 200 … 1000 и дальше).
+({int key, String text}) kissCheer(int n) {
+  if (n <= 0) return (key: 0, text: 'Тапайте, чтобы отправить поцелуйчики');
+  const milestones = <(int, String)>[
+    (1, 'Отправлено, партнёр обрадуется 💌'),
+    (10, 'Ещё-ещё-ещё! 💕'),
+    (25, 'Вот это любовь! 💞'),
+    (50, 'Полсотни! Сердце партнёра тает 🥹'),
+    (100, 'Сто поцелуйчиков! Вы чемпион нежности 🏆'),
+    (200, 'Двести! Партнёр уже в облаках ☁️💖'),
+    (300, 'Триста! Это поцелуйная лавина 🌨️💋'),
+    (400, 'Четыреста! Любовь не знает границ 🚀'),
+    (500, 'Пятьсот! Половина тысячи нежности 🥰'),
+    (600, 'Шестьсот! Грустить партнёр уже забыл как 😍'),
+    (700, 'Семьсот! Вот это пальчики-чемпионы 💪💋'),
+    (800, 'Восемьсот! Сердечко на максималках 💖💖💖'),
+    (900, 'Девятьсот! До тысячи рукой подать 🔥'),
+    (1000, 'ТЫСЯЧА поцелуйчиков! Вы легенда любви 👑💋'),
+  ];
+  if (n > 1000) {
+    final base = n ~/ 100 * 100;
+    if (base == 1000) {
+      return (key: 1000, text: milestones.last.$2);
+    }
+    if (base % 1000 == 0) {
+      return (
+        key: base,
+        text: '${base ~/ 1000} тыс. поцелуйчиков! Вы не остановитесь? 🤯💞',
+      );
+    }
+    return (key: base, text: 'Уже больше $base! Остановиться невозможно 💋');
+  }
+  var best = milestones.first;
+  for (final m in milestones) {
+    if (n >= m.$1) best = m;
+  }
+  return (key: best.$1, text: best.$2);
+}
+
 class _Particle {
   final String emoji;
   final double dx; // горизонтальное смещение, px
@@ -113,6 +152,7 @@ class _KissPageState extends State<KissPage>
     _addParticle(false);
     _pending++;
     _session++;
+    if (_session % 100 == 0) _rain(30); // салют на каждой сотне
     // отправляем пачкой: через секунду после последнего тапа или каждые 15 тапов
     if (_pending >= 15) {
       _doFlush();
@@ -130,15 +170,6 @@ class _KissPageState extends State<KissPage>
       s.sendKisses(_pending);
       _pending = 0;
     }
-  }
-
-  String _cheer() {
-    if (_session == 0) return 'Тапайте, чтобы отправить поцелуйчики';
-    if (_session >= 100) return 'Сто поцелуйчиков! Вы чемпион нежности 🏆';
-    if (_session >= 50) return 'Полсотни! Сердце партнёра тает 🥹';
-    if (_session >= 25) return 'Вот это любовь! 💞';
-    if (_session >= 10) return 'Ещё-ещё-ещё! 💕';
-    return 'Отправлено, партнёр обрадуется 💌';
   }
 
   @override
@@ -227,8 +258,8 @@ class _KissPageState extends State<KissPage>
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 250),
                       child: Text(
-                        _cheer(),
-                        key: ValueKey(_session == 0 ? 0 : (_session ~/ 5)),
+                        kissCheer(_session).text,
+                        key: ValueKey(kissCheer(_session).key),
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 16,
