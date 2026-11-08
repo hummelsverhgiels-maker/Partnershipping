@@ -10,6 +10,7 @@ const kAccentSoft = Color(0xFFFCE3D9);
 const kInk = Color(0xFF4A3F3A);
 const kInkSoft = Color(0xFF8C7F78);
 const kLine = Color(0xFFF1E3DA);
+const kSwitchOff = Color(0xFFE3D6CE);
 
 /// Пастельные цвета для участников.
 const kMemberColors = <int>[

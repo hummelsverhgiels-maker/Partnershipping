@@ -100,6 +100,98 @@ class _BouncyState extends State<Bouncy> {
   }
 }
 
+/// Лёгкий переключатель: без теней и сложной отрисовки (быстрее на iPhone).
+class SoftSwitch extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+  const SoftSwitch({super.key, required this.value, this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return PressScale(
+      scale: 0.93,
+      onTap: onChanged == null ? null : () => onChanged!(!value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        width: 52,
+        height: 32,
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: value ? kAccentDeep : kSwitchOff,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: AnimatedAlign(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            width: 26,
+            height: 26,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Строка «заголовок + пояснение + переключатель».
+class SwitchRow extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+  final Widget title;
+  final Widget? subtitle;
+  const SwitchRow({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    required this.title,
+    this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DefaultTextStyle.merge(
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  child: title,
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  DefaultTextStyle.merge(
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: kInkSoft,
+                      height: 1.3,
+                    ),
+                    child: subtitle!,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          SoftSwitch(value: value, onChanged: onChanged),
+        ],
+      ),
+    );
+  }
+}
+
 /// Мягкая карточка.
 class SoftCard extends StatelessWidget {
   final Widget child;

@@ -1,5 +1,9 @@
 import 'package:file_picker/file_picker.dart';
+
+import 'dart:io' show Platform;
+
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
@@ -93,9 +97,9 @@ class MediaService {
   static Future<PickedMedia?> pickImage(ImageSource source) async {
     final x = await _picker.pickImage(
       source: source,
-      maxWidth: 1920,
-      maxHeight: 1920,
-      imageQuality: 82,
+      maxWidth: 1600,
+      maxHeight: 1600,
+      imageQuality: 80,
     );
     if (x == null) return null;
     final bytes = await x.readAsBytes();
@@ -139,6 +143,81 @@ class MediaService {
       contentType: contentTypeFor(f.name),
       bytes: bytes,
     );
+  }
+
+  static final Map<String, Future<Uint8List>> _bytesFutures = {};
+  static final Map<String, int> _bytesSize = {};
+  static final List<String> _bytesOrder = [];
+  static int _bytesTotal = 0;
+
+  /// Содержимое картинки целиком. Один и тот же Future отдаём всем, кто спрашивает,
+  /// поэтому экран не мигает и картинка не скачивается повторно.
+  static Future<Uint8List> bytes(String path) {
+    final hit = _bytesFutures[path];
+    if (hit != null) {
+      _bytesOrder
+        ..remove(path)
+        ..add(path);
+      return hit;
+    }
+    final f = _download(path);
+    _bytesFutures[path] = f;
+    _bytesOrder.add(path);
+    f.then(
+      (b) {
+        _bytesSize[path] = b.length;
+        _bytesTotal += b.length;
+        // держим в памяти не больше ~60 МБ картинок
+        while (_bytesTotal > 60 * 1024 * 1024 && _bytesOrder.length > 1) {
+          final old = _bytesOrder.removeAt(0);
+          _bytesFutures.remove(old);
+          _bytesTotal -= _bytesSize.remove(old) ?? 0;
+        }
+      },
+      onError: (Object _) {
+        _bytesFutures.remove(path);
+        _bytesOrder.remove(path);
+      },
+    );
+    return f;
+  }
+
+  static Future<Uint8List> _download(String path) async {
+    final url = await Backend.signedUrl(path);
+    final r = await http
+        .get(Uri.parse(url))
+        .timeout(const Duration(seconds: 45));
+    if (r.statusCode != 200) {
+      throw 'Сервер вернул код ${r.statusCode} (${r.reasonPhrase ?? ''})';
+    }
+    return r.bodyBytes;
+  }
+
+  /// Android может закрыть приложение, пока открыта камера. Тогда снимок
+  /// «теряется». Здесь забираем его обратно.
+  static Future<PickedMedia?> recoverLost() async {
+    if (kIsWeb || !Platform.isAndroid) return null;
+    try {
+      final r = await _picker.retrieveLostData();
+      if (r.isEmpty) return null;
+      final x = r.file ?? (r.files?.isNotEmpty == true ? r.files!.first : null);
+      if (x == null) return null;
+      final bytes = await x.readAsBytes();
+      _checkSize(bytes.length);
+      final isVideo = r.type == RetrieveType.video;
+      var name = x.name.isEmpty
+          ? (isVideo ? 'video.mp4' : 'photo.jpg')
+          : x.name;
+      if (_ext(name).isEmpty) name = isVideo ? '$name.mp4' : '$name.jpg';
+      return PickedMedia(
+        type: isVideo ? 'video' : 'image',
+        name: name,
+        contentType: contentTypeFor(name),
+        bytes: bytes,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Загрузить файл в хранилище пары; возвращает путь в хранилище.

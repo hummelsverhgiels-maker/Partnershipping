@@ -180,7 +180,11 @@ class SettingsPage extends StatelessWidget {
                     label: const Text('Добавить день выплаты'),
                   ),
                 ),
-                const Divider(height: 28),
+                Container(
+                  height: 1,
+                  margin: const EdgeInsets.symmetric(vertical: 14),
+                  color: kLine,
+                ),
                 const Text(
                   'Разовые даты',
                   style: TextStyle(fontWeight: FontWeight.w800),
@@ -205,9 +209,12 @@ class SettingsPage extends StatelessWidget {
                     label: const Text('Добавить разовую дату'),
                   ),
                 ),
-                const Divider(height: 28),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
+                Container(
+                  height: 1,
+                  margin: const EdgeInsets.symmetric(vertical: 14),
+                  color: kLine,
+                ),
+                SwitchRow(
                   value: store.shiftPayFor(myId),
                   onChanged: (v) => store.setShiftPay(myId, v),
                   title: const Text('Сдвигать выплату с выходного'),
@@ -298,8 +305,7 @@ class SettingsPage extends StatelessWidget {
                             ),
                           ),
                   ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
+                SwitchRow(
                   value: store.getFlag('notif_pay'),
                   onChanged: (v) async {
                     await store.setFlag('notif_pay', v);
@@ -310,8 +316,7 @@ class SettingsPage extends StatelessWidget {
                     'За день до аванса или зарплаты, в 9:00',
                   ),
                 ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
+                SwitchRow(
                   value: store.getFlag('notif_partner'),
                   onChanged: (v) async {
                     await store.setFlag('notif_partner', v);

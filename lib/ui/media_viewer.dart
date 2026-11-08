@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -136,18 +138,34 @@ class _MediaViewerState extends State<MediaViewer> {
         ],
       );
     }
-    return InteractiveViewer(
-      maxScale: 5,
-      child: Image.network(
-        _url!,
-        fit: BoxFit.contain,
-        loadingBuilder: (c, w, p) =>
-            p == null ? w : const Center(child: CircularProgressIndicator()),
-        errorBuilder: (c, e, s) => const Text(
-          'Не удалось показать фото',
-          style: TextStyle(color: Colors.white),
-        ),
-      ),
+    return FutureBuilder<Uint8List>(
+      future: MediaService.bytes(widget.message.s('path')!),
+      builder: (context, snap) {
+        if (snap.hasError) {
+          return Padding(
+            padding: const EdgeInsets.all(24),
+            child: SelectableText(
+              'Не удалось загрузить фото.\n\n${snap.error}',
+              style: const TextStyle(color: Colors.white),
+            ),
+          );
+        }
+        if (!snap.hasData) return const CircularProgressIndicator();
+        return InteractiveViewer(
+          maxScale: 5,
+          child: Image.memory(
+            snap.data!,
+            fit: BoxFit.contain,
+            errorBuilder: (c, e, st) => Padding(
+              padding: const EdgeInsets.all(24),
+              child: SelectableText(
+                'Файл скачан (${fmtSize(snap.data!.length)}), но не открывается как картинка.\n\n$e',
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

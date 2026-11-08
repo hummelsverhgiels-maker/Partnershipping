@@ -38,6 +38,15 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void initState() {
     super.initState();
+    if (!s.isLocal) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final lost = await MediaService.recoverLost();
+        if (lost != null && mounted) {
+          if (mounted) toast(context, 'Восстанавливаю снимок…');
+          await _sendPicked(() async => lost);
+        }
+      });
+    }
     _ctrl.addListener(() {
       final h = _ctrl.text.trim().isNotEmpty;
       if (h != _hasText) setState(() => _hasText = h);
@@ -88,7 +97,26 @@ class _ChatPageState extends State<ChatPage> {
         durationMs: m.durationMs,
       );
     } catch (e) {
-      if (mounted) toast(context, e is String ? e : Backend.explain(e));
+      if (mounted) {
+        final details = e is String ? e : e.toString();
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Не удалось отправить'),
+            content: SingleChildScrollView(
+              child: SelectableText(
+                '${e is String ? e : Backend.explain(e)}\n\nПодробности: $details',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Понятно'),
+              ),
+            ],
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -777,8 +805,9 @@ class _ChatPageState extends State<ChatPage> {
   }
 }
 
-/// Миниатюра фото (подгружается по временной ссылке).
-class _ImageThumb extends StatelessWidget {
+/// Миниатюра фото. Картинка скачивается один раз, хранится в памяти и
+/// показывается уменьшенной (так экран не тормозит).
+class _ImageThumb extends StatefulWidget {
   final String path;
   final double? width;
   final double? height;
@@ -791,42 +820,71 @@ class _ImageThumb extends StatelessWidget {
   });
 
   @override
+  State<_ImageThumb> createState() => _ImageThumbState();
+}
+
+class _ImageThumbState extends State<_ImageThumb> {
+  late Future<Uint8List> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = MediaService.bytes(widget.path);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ImageThumb old) {
+    super.didUpdateWidget(old);
+    if (old.path != widget.path) _future = MediaService.bytes(widget.path);
+  }
+
+  Widget _placeholder({Widget? child}) => ColoredBox(
+    color: const Color(0xFFF1E6DF),
+    child: Center(child: child),
+  );
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
         child: SizedBox(
-          width: width,
-          height: height,
-          child: FutureBuilder<String>(
-            future: MediaService.url(path),
-            builder: (context, snap) {
-              if (snap.hasError || (snap.hasData && snap.data!.isEmpty)) {
-                return const ColoredBox(
-                  color: Color(0xFFF1E6DF),
-                  child: Center(child: Icon(Icons.broken_image_outlined)),
-                );
-              }
-              if (!snap.hasData) {
-                return const ColoredBox(
-                  color: Color(0xFFF1E6DF),
-                  child: Center(
-                    child: SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+          width: widget.width,
+          height: widget.height,
+          child: LayoutBuilder(
+            builder: (context, c) {
+              final dpr = MediaQuery.of(context).devicePixelRatio;
+              final w = (c.maxWidth.isFinite ? c.maxWidth : 220) * dpr;
+              final cacheW = w.round().clamp(96, 720);
+              return FutureBuilder<Uint8List>(
+                future: _future,
+                builder: (context, snap) {
+                  if (snap.hasError) {
+                    return _placeholder(
+                      child: const Icon(Icons.broken_image_outlined),
+                    );
+                  }
+                  if (!snap.hasData) {
+                    return _placeholder(
+                      child: const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    );
+                  }
+                  return Image.memory(
+                    snap.data!,
+                    fit: BoxFit.cover,
+                    cacheWidth: cacheW,
+                    gaplessPlayback: true,
+                    filterQuality: FilterQuality.low,
+                    errorBuilder: (c, e, st) => _placeholder(
+                      child: const Icon(Icons.broken_image_outlined),
                     ),
-                  ),
-                );
-              }
-              return Image.network(
-                snap.data!,
-                fit: BoxFit.cover,
-                errorBuilder: (c, e, st) => const ColoredBox(
-                  color: Color(0xFFF1E6DF),
-                  child: Center(child: Icon(Icons.broken_image_outlined)),
-                ),
+                  );
+                },
               );
             },
           ),
