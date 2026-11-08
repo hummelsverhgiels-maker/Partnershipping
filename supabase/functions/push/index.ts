@@ -84,6 +84,10 @@ Deno.serve(async (req) => {
     if (body?.table !== "records" || !incoming?.id) return new Response("ignored");
     const cat = categoryOf(String(incoming.kind));
     if (!cat) return new Response("ignored kind");
+    // Партнёр лишь поставил или снял пометку «важное» у чужого сообщения: не уведомляем.
+    if (incoming.kind === "message" && incoming.data?.from && incoming.data.from !== incoming.updated_by) {
+      return new Response("flag change");
+    }
 
     // Текст берём из базы, а не из присланного запроса.
     const { data: row } = await supabase.from("records").select("*").eq("id", incoming.id).maybeSingle();
@@ -114,7 +118,13 @@ Deno.serve(async (req) => {
     let text: string;
     if (cat === "chat") {
       title = name;
-      text = String(row.data?.text ?? "").slice(0, 140) || "Новое сообщение";
+      const t = String(row.data?.type ?? "text");
+      const caption = String(row.data?.text ?? "").slice(0, 140);
+      if (t === "image") text = "📷 Фото" + (caption ? ": " + caption : "");
+      else if (t === "video") text = "🎥 Видео" + (caption ? ": " + caption : "");
+      else if (t === "audio") text = "🎤 Голосовое сообщение";
+      else if (t === "file") text = "📎 " + String(row.data?.name ?? "Файл");
+      else text = caption || "Новое сообщение";
     } else {
       title = `${name} внёс(ла) изменения`;
       text = `Обновлено: ${CATEGORY_TEXT[cat]}`;

@@ -328,6 +328,11 @@ class AppStore extends ChangeNotifier {
         }
         final old = _recs[rec.id];
         if (old != null && !rec.updatedAt.isAfter(old.updatedAt)) continue;
+        if (rec.kind == 'message' &&
+            rec.s('from') != null &&
+            rec.s('from') != rec.updatedBy) {
+          continue; // партнёр лишь поменял пометку «важное»
+        }
         final c = _category(rec.kind);
         if (c != null) cats.add(c);
       }
@@ -362,11 +367,14 @@ class AppStore extends ChangeNotifier {
   // ------------------------------------------------------------- чат
   int get chatSeen => _prefs?.getInt('chat_seen') ?? 0;
 
+  /// Автор сообщения (а не тот, кто последним поменял пометку «важное»).
+  String? authorOf(Rec m) => m.s('from') ?? m.updatedBy;
+
   int get unreadChat {
     final meId = session?.memberId;
     final seen = chatSeen;
     return messages
-        .where((m) => m.updatedBy != meId && (m.i('ts') ?? 0) > seen)
+        .where((m) => authorOf(m) != meId && (m.i('ts') ?? 0) > seen)
         .length;
   }
 
@@ -380,7 +388,49 @@ class AppStore extends ChangeNotifier {
   void sendMessage(String text) {
     final t = text.trim();
     if (t.isEmpty) return;
-    upsert('message', {'text': t, 'ts': DateTime.now().millisecondsSinceEpoch});
+    upsert('message', {
+      'type': 'text',
+      'text': t,
+      'from': session?.memberId,
+      'ts': DateTime.now().millisecondsSinceEpoch,
+    });
+  }
+
+  /// Сообщение с файлом (фото, видео, голосовое, документ). Файл уже загружен.
+  void sendMedia({
+    required String type, // image | video | audio | file
+    required String path,
+    required String name,
+    required int size,
+    int? durationMs,
+    String? caption,
+  }) {
+    upsert('message', {
+      'type': type,
+      'path': path,
+      'name': name,
+      'size': size,
+      'dur': ?durationMs,
+      if (caption != null && caption.trim().isNotEmpty) 'text': caption.trim(),
+      'from': session?.memberId,
+      'ts': DateTime.now().millisecondsSinceEpoch,
+    });
+  }
+
+  /// Пометить сообщение «важным» (и обратно).
+  void toggleImportant(Rec m) {
+    upsert('message', {...m.data, 'important': !m.b('important')}, id: m.id);
+  }
+
+  /// Удалить сообщение (и файл на сервере, если он есть).
+  void deleteMessage(Rec m) {
+    final path = m.s('path');
+    remove(m.id);
+    if (path != null && !isLocal) {
+      Backend.deleteFile(path).catchError((Object e) {
+        debugPrint('Файл не удалён: $e');
+      });
+    }
   }
 
   /// Запомнить токен этого устройства для мгновенных уведомлений.

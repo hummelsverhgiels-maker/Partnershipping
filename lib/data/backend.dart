@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 
 import '../config.dart';
@@ -156,6 +158,28 @@ class Backend {
       'platform': platform,
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     });
+  }
+
+  // ---- файлы чата (Supabase Storage, бакет «chat») ----
+  static Future<void> uploadFile(
+    String path,
+    Uint8List bytes,
+    String contentType,
+  ) async {
+    await client.storage
+        .from('chat')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: contentType, upsert: true),
+        );
+  }
+
+  static Future<String> signedUrl(String path) =>
+      client.storage.from('chat').createSignedUrl(path, 3600);
+
+  static Future<void> deleteFile(String path) async {
+    await client.storage.from('chat').remove([path]);
   }
 
   static Future<void> updateMember(String id, String name, int color) async {

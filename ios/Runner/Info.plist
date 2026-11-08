@@ -6,6 +6,12 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+		<key>NSMicrophoneUsageDescription</key>
+	<string>Микрофон нужен, чтобы записывать голосовые сообщения.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Камера нужна, чтобы отправлять фото и видео в чат.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Доступ к фото нужен, чтобы отправлять их в чат.</string>
 	<key>CFBundleDisplayName</key>
 	<string>V&amp;V loving planning</string>
 	<key>CFBundleExecutable</key>

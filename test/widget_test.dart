@@ -26,10 +26,19 @@ void main() {
     await tester.pump();
     expect(find.text('Календарь'), findsWidgets);
     final now = DateTime.now();
-    store.setShift(store.session!.memberId, [DateTime(now.year, now.month, 15)],
-        '09:00', '21:00');
+    store.setShift(
+      store.session!.memberId,
+      [DateTime(now.year, now.month, 15)],
+      '09:00',
+      '21:00',
+    );
     await tester.pump();
     expect(find.text('9–21'), findsOneWidget);
-    expect(store.schedule.shiftOf(store.session!.memberId, DateTime(now.year, now.month, 15))!.end, '21:00');
+    expect(
+      store.schedule
+          .shiftOf(store.session!.memberId, DateTime(now.year, now.month, 15))!
+          .end,
+      '21:00',
+    );
   });
 }

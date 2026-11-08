@@ -211,3 +211,25 @@ create table if not exists public.push_log (
   sent_at timestamptz not null default now()
 );
 alter table public.push_log enable row level security;
+
+-- ===== Файлы чата (фото, видео, голосовые, документы) =====
+-- Закрытое хранилище: файл лежит в папке с номером пары, доступ только участникам пары.
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('chat', 'chat', false, 52428800)
+on conflict (id) do update set file_size_limit = excluded.file_size_limit, public = false;
+
+drop policy if exists chat_files_read on storage.objects;
+create policy chat_files_read on storage.objects for select to authenticated
+  using (bucket_id = 'chat' and public.is_my_pair(((storage.foldername(name))[1])::uuid));
+
+drop policy if exists chat_files_insert on storage.objects;
+create policy chat_files_insert on storage.objects for insert to authenticated
+  with check (bucket_id = 'chat' and public.is_my_pair(((storage.foldername(name))[1])::uuid));
+
+drop policy if exists chat_files_update on storage.objects;
+create policy chat_files_update on storage.objects for update to authenticated
+  using (bucket_id = 'chat' and public.is_my_pair(((storage.foldername(name))[1])::uuid));
+
+drop policy if exists chat_files_delete on storage.objects;
+create policy chat_files_delete on storage.objects for delete to authenticated
+  using (bucket_id = 'chat' and public.is_my_pair(((storage.foldername(name))[1])::uuid));
