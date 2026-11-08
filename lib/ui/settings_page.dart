@@ -8,6 +8,8 @@ import '../data/store.dart';
 import '../services/notifier.dart';
 import '../services/push_service.dart';
 import '../services/scriptable.dart';
+import 'avatar.dart';
+import 'avatar_picker.dart';
 import 'theme_controller.dart';
 import '../util.dart';
 import 'common.dart';
@@ -48,7 +50,7 @@ class SettingsPage extends StatelessWidget {
             onTap: () => _editProfile(context),
             child: Row(
               children: [
-                ColorDot(me?.color ?? kMemberColors.first, size: 34),
+                Avatar(store: store, memberId: me?.id, size: 52),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Text(
@@ -170,7 +172,7 @@ class SettingsPage extends StatelessWidget {
                   Row(
                     children: [
                       if (partner != null) ...[
-                        ColorDot(partner.color),
+                        Avatar(store: store, memberId: partner.id, size: 28),
                         const SizedBox(width: 8),
                         Text(
                           'Партнёр: ${partner.name}',
@@ -496,6 +498,22 @@ class SettingsPage extends StatelessWidget {
               const Text(
                 'Моё имя и цвет',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Avatar(store: store, memberId: me?.id, size: 56),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Bouncy(
+                      child: OutlinedButton.icon(
+                        onPressed: () => showAvatarSheet(ctx, store),
+                        icon: const Icon(Icons.face_retouching_natural_rounded),
+                        label: const Text('Сменить аватарку'),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 14),
               TextField(

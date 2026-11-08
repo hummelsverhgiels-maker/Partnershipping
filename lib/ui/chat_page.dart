@@ -8,6 +8,7 @@ import '../data/backend.dart';
 import '../data/store.dart';
 import '../models.dart';
 import '../services/media_service.dart';
+import 'avatar.dart';
 import 'common.dart';
 import 'media_viewer.dart';
 import 'media_widgets.dart';
@@ -386,8 +387,8 @@ class _ChatPageState extends State<ChatPage> {
             const Text('Чат'),
             if (partner != null) ...[
               const SizedBox(width: 10),
-              ColorDot(partner.color, size: 12),
-              const SizedBox(width: 6),
+              Avatar(store: s, memberId: partner.id, size: 28),
+              const SizedBox(width: 8),
               Text(
                 partner.name,
                 style: TextStyle(fontSize: 16, color: kInkSoft),
@@ -596,105 +597,119 @@ class _ChatPageState extends State<ChatPage> {
         content = Text(text ?? '', style: TextStyle(fontSize: 16, color: fg));
     }
 
-    return Align(
-      alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-      child: GestureDetector(
-        onLongPress: () => _messageMenu(m),
-        child: Container(
-          constraints: BoxConstraints(maxWidth: width.clamp(220, 460)),
-          margin: const EdgeInsets.symmetric(vertical: 3),
-          padding: const EdgeInsets.fromLTRB(12, 9, 12, 7),
-          decoration: BoxDecoration(
-            color: mine ? base : base.withValues(alpha: 0.35),
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(18),
-              topRight: const Radius.circular(18),
-              bottomLeft: Radius.circular(mine ? 18 : 4),
-              bottomRight: Radius.circular(mine ? 4 : 18),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (m.s('replyText') != null)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 6),
-                  padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
-                  decoration: BoxDecoration(
-                    color: fg.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border(
-                      left: BorderSide(
-                        color: fg.withValues(alpha: 0.5),
-                        width: 3,
-                      ),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if ((m.s('replyName') ?? '').isNotEmpty)
-                        Text(
-                          m.s('replyName')!,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: fg,
-                          ),
-                        ),
-                      Text(
-                        m.s('replyText')!,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 13, color: fgSoft),
-                      ),
-                    ],
-                  ),
-                ),
-              content,
-              if (type != 'text' && text != null && text.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(text, style: TextStyle(fontSize: 15, color: fg)),
-                ),
-              const SizedBox(height: 3),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (m.b('important'))
-                    const Padding(
-                      padding: EdgeInsets.only(right: 4),
-                      child: Icon(
-                        Icons.star_rounded,
-                        size: 14,
-                        color: Color(0xFFD9A400),
-                      ),
-                    ),
-                  Text(_hm(ts), style: TextStyle(fontSize: 11, color: fgSoft)),
-                ],
-              ),
-              if (((m.data['reactions'] as Map?)?.isNotEmpty ?? false))
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: fg.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      (m.data['reactions'] as Map).values.join(' '),
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                  ),
-                ),
-            ],
+    final bubbleWidget = GestureDetector(
+      onLongPress: () => _messageMenu(m),
+      child: Container(
+        constraints: BoxConstraints(maxWidth: width.clamp(220, 460)),
+        margin: const EdgeInsets.symmetric(vertical: 3),
+        padding: const EdgeInsets.fromLTRB(12, 9, 12, 7),
+        decoration: BoxDecoration(
+          color: mine ? base : base.withValues(alpha: 0.35),
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(18),
+            topRight: const Radius.circular(18),
+            bottomLeft: Radius.circular(mine ? 18 : 4),
+            bottomRight: Radius.circular(mine ? 4 : 18),
           ),
         ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (m.s('replyText') != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+                decoration: BoxDecoration(
+                  color: fg.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border(
+                    left: BorderSide(
+                      color: fg.withValues(alpha: 0.5),
+                      width: 3,
+                    ),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if ((m.s('replyName') ?? '').isNotEmpty)
+                      Text(
+                        m.s('replyName')!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: fg,
+                        ),
+                      ),
+                    Text(
+                      m.s('replyText')!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 13, color: fgSoft),
+                    ),
+                  ],
+                ),
+              ),
+            content,
+            if (type != 'text' && text != null && text.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(text, style: TextStyle(fontSize: 15, color: fg)),
+              ),
+            const SizedBox(height: 3),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (m.b('important'))
+                  const Padding(
+                    padding: EdgeInsets.only(right: 4),
+                    child: Icon(
+                      Icons.star_rounded,
+                      size: 14,
+                      color: Color(0xFFD9A400),
+                    ),
+                  ),
+                Text(_hm(ts), style: TextStyle(fontSize: 11, color: fgSoft)),
+              ],
+            ),
+            if (((m.data['reactions'] as Map?)?.isNotEmpty ?? false))
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: fg.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    (m.data['reactions'] as Map).values.join(' '),
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (mine) {
+      return Align(alignment: Alignment.centerRight, child: bubbleWidget);
+    }
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 6, bottom: 4),
+            child: Avatar(store: s, memberId: s.authorOf(m), size: 30),
+          ),
+          Flexible(child: bubbleWidget),
+        ],
       ),
     );
   }

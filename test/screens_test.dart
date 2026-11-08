@@ -251,6 +251,29 @@ void main() {
           await _settle(tester);
         }
 
+        // Аватарка: окно выбора открывается, картинка выбирается и видна в профиле
+        store.setAvatar('emoji:🦊');
+        await tester.tap(find.text('Настройки'));
+        await _settle(tester);
+        expect(find.text('🦊'), findsWidgets);
+        await tester.tap(find.byIcon(Icons.edit_outlined).first);
+        await _settle(tester);
+        await tester.tap(find.text('Сменить аватарку'));
+        await _settle(tester);
+        expect(find.text('Аватарка'), findsWidgets);
+        await tester.tap(find.text('🐼'));
+        await _settle(tester);
+        expect(store.avatarOf(store.session!.memberId), 'emoji:🐼');
+        expect(tester.takeException(), isNull);
+        await tester.tapAt(const Offset(200, 60)); // закрыть окно выбора
+        await _settle(tester);
+        await tester.tapAt(const Offset(200, 60)); // закрыть окно профиля
+        await _settle(tester);
+        await tester
+            .state<NavigatorState>(find.byType(Navigator).first)
+            .maybePop();
+        await _settle(tester);
+
         // Смена темы из настроек не ломает приложение
         await tester.tap(find.text('Настройки'));
         await _settle(tester);
@@ -281,6 +304,13 @@ void main() {
     store.setShiftPay(me, true);
     expect(store.hourRateFor(me), 350);
     expect(store.shiftPayFor(me), true);
+    // аватарки
+    expect(store.avatarOf(me), '');
+    store.setAvatar('emoji:🐱');
+    expect(store.avatarOf(me), 'emoji:🐱');
+    store.setAvatar('');
+    expect(store.avatarOf(me), '');
+    store.setAvatar('emoji:🦊');
     // настроение и документы
     expect(store.moodOf(me), 80);
     store.setMood(15);

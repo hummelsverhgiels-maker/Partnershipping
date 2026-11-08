@@ -70,6 +70,7 @@ class AppStore extends ChangeNotifier {
   Map<String, Rec> moods = {}; // memberId -> запись настроения
   Map<String, int> seenTs = {}; // memberId -> до какого сообщения прочитан чат
   Map<String, Rec> kisses = {}; // memberId -> счётчик поцелуев
+  Map<String, Rec> avatars = {}; // memberId -> аватарка
 
   bool get hasSession => session != null;
   bool get isLocal => session?.local ?? true;
@@ -629,6 +630,24 @@ class AppStore extends ChangeNotifier {
     }
   }
 
+  // --------------------------------------------------------------- аватарки
+  /// '' — нет (показывается первая буква имени), 'emoji:🐱' или 'photo:путь'.
+  String avatarOf(String memberId) => avatars[memberId]?.s('value') ?? '';
+
+  void setAvatar(String value) {
+    final meId = session?.memberId;
+    if (meId == null) return;
+    final existing = avatars[meId];
+    final old = existing?.s('value') ?? '';
+    upsert('avatar', {'memberId': meId, 'value': value}, id: existing?.id);
+    // старое фото больше не нужно
+    if (old.startsWith('photo:') && old != value && !isLocal) {
+      Backend.deleteFile(old.substring(6)).catchError((Object e) {
+        debugPrint('Старая аватарка не удалена: $e');
+      });
+    }
+  }
+
   // ------------------------------------------------------------ поцелуйчики
   int kissTotalOf(String memberId) => kisses[memberId]?.i('total') ?? 0;
 
@@ -1036,6 +1055,7 @@ class AppStore extends ChangeNotifier {
     final mo = <String, Rec>{};
     final se = <String, int>{};
     final ki = <String, Rec>{};
+    final av = <String, Rec>{};
     for (final r in _recs.values) {
       switch (r.kind) {
         case 'shift':
@@ -1097,6 +1117,9 @@ class AppStore extends ChangeNotifier {
         case 'mood':
           final mid = r.s('memberId');
           if (mid != null) mo[mid] = r;
+        case 'avatar':
+          final aid = r.s('memberId');
+          if (aid != null) av[aid] = r;
         case 'kiss':
           final kid = r.s('memberId');
           if (kid != null) ki[kid] = r;
@@ -1145,6 +1168,7 @@ class AppStore extends ChangeNotifier {
     moods = mo;
     seenTs = se;
     kisses = ki;
+    avatars = av;
     events = ev;
     shopping = sh;
     todos = td;

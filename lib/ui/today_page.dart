@@ -5,6 +5,7 @@ import '../logic/important.dart';
 import '../logic/stats.dart';
 import '../models.dart';
 import '../util.dart';
+import 'avatar.dart';
 import 'common.dart';
 import 'day_page.dart';
 import 'earnings_page.dart';
@@ -111,7 +112,21 @@ class TodayPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('${_greet()}${me != null ? ', ${me.name}' : ''}'),
+        title: Row(
+          children: [
+            if (me != null) ...[
+              Avatar(store: s, memberId: me.id, size: 36),
+              const SizedBox(width: 10),
+            ],
+            Expanded(
+              child: Text(
+                '${_greet()}${me != null ? ', ${me.name}' : ''}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),

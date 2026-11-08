@@ -5,6 +5,7 @@ import '../data/backend.dart';
 import '../data/store.dart';
 import '../models.dart';
 import '../services/media_service.dart';
+import 'avatar.dart';
 import 'common.dart';
 import 'media_viewer.dart';
 import 'media_widgets.dart';
@@ -93,22 +94,7 @@ class PostCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 38,
-                height: 38,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Color(author?.color ?? kMemberColors.first),
-                  shape: BoxShape.circle,
-                ),
-                child: Text(
-                  (author?.name ?? '?').characters.first.toUpperCase(),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    color: kOnPastel,
-                  ),
-                ),
-              ),
+              Avatar(store: s, memberId: post.s('from'), size: 40),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -374,7 +360,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ColorDot(a?.color ?? kMemberColors.first, size: 12),
+        Avatar(store: s, memberId: c.s('from'), size: 28),
         const SizedBox(width: 8),
         Expanded(
           child: Column(

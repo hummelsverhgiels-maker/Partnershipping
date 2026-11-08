@@ -94,12 +94,16 @@ class MediaService {
     }
   }
 
-  static Future<PickedMedia?> pickImage(ImageSource source) async {
+  static Future<PickedMedia?> pickImage(
+    ImageSource source, {
+    double maxSide = 1600,
+    int quality = 80,
+  }) async {
     final x = await _picker.pickImage(
       source: source,
-      maxWidth: 1600,
-      maxHeight: 1600,
-      imageQuality: 80,
+      maxWidth: maxSide,
+      maxHeight: maxSide,
+      imageQuality: quality,
     );
     if (x == null) return null;
     final bytes = await x.readAsBytes();

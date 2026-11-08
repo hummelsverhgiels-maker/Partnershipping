@@ -6,6 +6,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import '../data/store.dart';
+import 'avatar.dart';
 import 'common.dart';
 import 'theme.dart';
 
@@ -172,7 +173,7 @@ class _KissPageState extends State<KissPage>
                           'Вы отправили',
                           '$myToday',
                           'сегодня · всего $myTotal',
-                          me?.color,
+                          me?.id,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -185,7 +186,7 @@ class _KissPageState extends State<KissPage>
                           partner == null
                               ? 'ещё не подключён'
                               : 'сегодня · всего $theirTotal',
-                          partner?.color,
+                          partner?.id,
                         ),
                       ),
                     ],
@@ -295,7 +296,7 @@ class _KissPageState extends State<KissPage>
     );
   }
 
-  Widget _stat(String label, String big, String sub, int? color) {
+  Widget _stat(String label, String big, String sub, String? memberId) {
     return SoftCard(
       padding: const EdgeInsets.all(14),
       child: Column(
@@ -303,8 +304,9 @@ class _KissPageState extends State<KissPage>
         children: [
           Row(
             children: [
-              if (color != null) ColorDot(color, size: 10),
-              if (color != null) const SizedBox(width: 6),
+              if (memberId != null)
+                Avatar(store: s, memberId: memberId, size: 24),
+              if (memberId != null) const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   label,

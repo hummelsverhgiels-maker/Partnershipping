@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../data/store.dart';
 import '../logic/mood.dart';
 import '../models.dart';
+import 'avatar.dart';
 import 'common.dart';
 import 'theme.dart';
 
@@ -114,7 +115,7 @@ class _MoodCardState extends State<MoodCard> {
     final ts = s.moods[partner.id]?.i('ts');
     return Row(
       children: [
-        ColorDot(partner.color, size: 12),
+        Avatar(store: s, memberId: partner.id, size: 28),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
