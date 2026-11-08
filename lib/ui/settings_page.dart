@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../data/store.dart';
 import '../services/notifier.dart';
+import '../services/scriptable.dart';
 import '../util.dart';
 import 'common.dart';
 import 'theme.dart';
@@ -182,6 +183,40 @@ class SettingsPage extends StatelessWidget {
               ],
             ),
           ),
+          if (!store.isLocal) ...[
+            const SectionTitle('Виджет на iPhone (бесплатно)'),
+            SoftCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                      'Если приложение стоит на iPhone без виджета, можно сделать виджет '
+                      'через бесплатное приложение Scriptable.',
+                      style: TextStyle(color: kInkSoft)),
+                  const SizedBox(height: 10),
+                  const Text(
+                      '1. На iPhone поставьте «Scriptable» из App Store.\n'
+                      '2. Нажмите кнопку ниже: скрипт скопируется.\n'
+                      '3. В Scriptable: «+» → вставьте скрипт → назовите «Выходные».\n'
+                      '4. На рабочем столе: долгое нажатие → «+» → Scriptable → '
+                      'средний размер → «Добавить». Нажмите на виджет → Script: «Выходные».',
+                      style: TextStyle(height: 1.4)),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(
+                          text: scriptableScript(
+                              code: store.session!.code,
+                              memberId: store.session!.memberId)));
+                      toast(context, 'Скрипт скопирован. Вставьте его в Scriptable');
+                    },
+                    icon: const Icon(Icons.copy_rounded),
+                    label: const Text('Скопировать скрипт виджета'),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SectionTitle('Уведомления'),
           SoftCard(
             child: Column(

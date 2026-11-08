@@ -113,6 +113,17 @@ class Backend {
     await client.from('records').delete().eq('id', id);
   }
 
+  /// Готовые тексты для виджета (читаются из Scriptable по коду пары).
+  static Future<void> upsertWidget(
+      String pairId, String memberId, Map<String, dynamic> data) async {
+    await client.from('widget_cache').upsert({
+      'member_id': memberId,
+      'pair_id': pairId,
+      'data': data,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    });
+  }
+
   static Future<void> updateMember(String id, String name, int color) async {
     await client
         .from('members')

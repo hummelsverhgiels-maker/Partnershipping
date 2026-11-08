@@ -162,3 +162,27 @@ begin
   begin alter publication supabase_realtime add table public.records; exception when duplicate_object then null; end;
   begin alter publication supabase_realtime add table public.members; exception when duplicate_object then null; end;
 end $$;
+
+-- ===== Виджет для iPhone через Scriptable (бесплатно) =====
+-- Приложение кладёт сюда готовые тексты, а виджет их забирает по коду пары.
+create table if not exists public.widget_cache (
+  member_id uuid primary key references public.members(id) on delete cascade,
+  pair_id uuid not null references public.pairs(id) on delete cascade,
+  data jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+alter table public.widget_cache enable row level security;
+
+drop policy if exists widget_cache_all on public.widget_cache;
+create policy widget_cache_all on public.widget_cache for all to authenticated
+  using (public.is_my_pair(pair_id)) with check (public.is_my_pair(pair_id));
+
+create or replace function public.get_widget(p_code text, p_member uuid) returns jsonb
+language sql security definer stable set search_path = public as $$
+  select w.data
+  from public.widget_cache w
+  join public.pairs p on p.id = w.pair_id
+  where p.code = upper(trim(p_code)) and w.member_id = p_member
+$$;
+
+grant execute on function public.get_widget(text, uuid) to anon, authenticated;

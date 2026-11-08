@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -92,6 +93,19 @@ class _PartnershippingAppState extends State<PartnershippingApp>
       theme: buildTheme(),
       locale: const Locale('ru'),
       supportedLocales: const [Locale('ru')],
+      builder: (context, child) {
+        if (!kIsWeb) return child!;
+        // В браузере на большом экране держим приложение «телефонной» ширины.
+        return ColoredBox(
+          color: const Color(0xFFFFF8F3),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: child,
+            ),
+          ),
+        );
+      },
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
