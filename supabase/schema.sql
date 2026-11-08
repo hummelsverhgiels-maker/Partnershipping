@@ -186,3 +186,28 @@ language sql security definer stable set search_path = public as $$
 $$;
 
 grant execute on function public.get_widget(text, uuid) to anon, authenticated;
+
+-- ===== Мгновенные уведомления (Firebase) =====
+-- Адреса устройств, куда слать уведомления
+create table if not exists public.devices (
+  token text primary key,
+  member_id uuid not null references public.members(id) on delete cascade,
+  pair_id uuid not null references public.pairs(id) on delete cascade,
+  platform text,
+  updated_at timestamptz not null default now()
+);
+create index if not exists devices_pair_idx on public.devices(pair_id);
+alter table public.devices enable row level security;
+
+drop policy if exists devices_all on public.devices;
+create policy devices_all on public.devices for all to authenticated
+  using (public.is_my_pair(pair_id)) with check (public.is_my_pair(pair_id));
+
+-- Журнал отправленных уведомлений (против повторов и спама). Читает только сервер.
+create table if not exists public.push_log (
+  id text primary key,
+  pair_id uuid not null,
+  category text not null,
+  sent_at timestamptz not null default now()
+);
+alter table public.push_log enable row level security;

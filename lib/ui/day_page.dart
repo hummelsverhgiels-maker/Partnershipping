@@ -67,11 +67,15 @@ class DayPage extends StatelessWidget {
                             Text(
                               '${e.s('time') != null ? '${e.s('time')}  ' : ''}${e.s('title')}',
                               style: const TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.w700),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                             if (e.s('note') != null)
-                              Text(e.s('note')!,
-                                  style: const TextStyle(color: kInkSoft)),
+                              Text(
+                                e.s('note')!,
+                                style: const TextStyle(color: kInkSoft),
+                              ),
                           ],
                         ),
                       ),
@@ -91,8 +95,10 @@ class DayPage extends StatelessWidget {
               if (todos.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(8),
-                  child: Text('Дел на этот день нет',
-                      style: TextStyle(color: kInkSoft)),
+                  child: Text(
+                    'Дел на этот день нет',
+                    style: TextStyle(color: kInkSoft),
+                  ),
                 ),
               for (final t in todos) ...[
                 TodoTile(store: store, todo: t),
@@ -130,20 +136,31 @@ class DayPage extends StatelessWidget {
             width: 8,
             height: 44,
             decoration: BoxDecoration(
-                color: Color(m.color), borderRadius: BorderRadius.circular(6)),
+              color: Color(m.color),
+              borderRadius: BorderRadius.circular(6),
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(mine ? 'Я (${m.name})' : m.name,
-                    style: const TextStyle(color: kInkSoft, fontSize: 13)),
-                Text(main,
-                    style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.w800)),
+                Text(
+                  mine ? 'Я (${m.name})' : m.name,
+                  style: const TextStyle(color: kInkSoft, fontSize: 13),
+                ),
+                Text(
+                  main,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
                 if (sub != null)
-                  Text(sub, style: const TextStyle(color: kInkSoft, fontSize: 13)),
+                  Text(
+                    sub,
+                    style: const TextStyle(color: kInkSoft, fontSize: 13),
+                  ),
               ],
             ),
           ),
@@ -165,12 +182,18 @@ class DayPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('${p.label} · ${m?.name ?? ''}',
-                    style: const TextStyle(
-                        fontSize: 17, fontWeight: FontWeight.w800)),
+                Text(
+                  '${p.label} · ${m?.name ?? ''}',
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
                 if (p.shifted)
-                  Text('перенесено с ${p.nominal.day}.${p.nominal.month.toString().padLeft(2, '0')}',
-                      style: const TextStyle(color: kInkSoft, fontSize: 13)),
+                  Text(
+                    'перенесено с ${p.nominal.day}.${p.nominal.month.toString().padLeft(2, '0')}',
+                    style: const TextStyle(color: kInkSoft, fontSize: 13),
+                  ),
               ],
             ),
           ),

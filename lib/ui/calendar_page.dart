@@ -74,9 +74,9 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   void _clearSelection() => setState(() {
-        _selected.clear();
-        _lastSelected = null;
-      });
+    _selected.clear();
+    _lastSelected = null;
+  });
 
   List<DateTime> get _selectedDays =>
       (_selected.map(parseYmd).toList()..sort());
@@ -93,14 +93,16 @@ class _CalendarPageState extends State<CalendarPage> {
     final eventDates = {for (final e in s.events) e.s('date')};
     final todoDates = {
       for (final t in s.todos)
-        if (!t.b('done')) t.s('date')
+        if (!t.b('done')) t.s('date'),
     };
 
     return Scaffold(
       appBar: AppBar(
         leading: selecting
             ? IconButton(
-                icon: const Icon(Icons.close), onPressed: _clearSelection)
+                icon: const Icon(Icons.close),
+                onPressed: _clearSelection,
+              )
             : null,
         title: Text(selecting ? 'Выбрано: ${_selected.length}' : 'Календарь'),
         actions: [
@@ -121,18 +123,24 @@ class _CalendarPageState extends State<CalendarPage> {
             child: Row(
               children: [
                 IconButton(
-                    onPressed: () => _shiftMonth(-1),
-                    icon: const Icon(Icons.chevron_left, size: 30)),
+                  onPressed: () => _shiftMonth(-1),
+                  icon: const Icon(Icons.chevron_left, size: 30),
+                ),
                 Expanded(
                   child: Center(
-                    child: Text(monthTitle(_month),
-                        style: const TextStyle(
-                            fontSize: 21, fontWeight: FontWeight.w800)),
+                    child: Text(
+                      monthTitle(_month),
+                      style: const TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
                 ),
                 IconButton(
-                    onPressed: () => _shiftMonth(1),
-                    icon: const Icon(Icons.chevron_right, size: 30)),
+                  onPressed: () => _shiftMonth(1),
+                  icon: const Icon(Icons.chevron_right, size: 30),
+                ),
               ],
             ),
           ),
@@ -144,11 +152,14 @@ class _CalendarPageState extends State<CalendarPage> {
                 for (final w in ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'])
                   Expanded(
                     child: Center(
-                      child: Text(w,
-                          style: const TextStyle(
-                              color: kInkSoft,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13)),
+                      child: Text(
+                        w,
+                        style: const TextStyle(
+                          color: kInkSoft,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
                   ),
               ],
@@ -228,13 +239,21 @@ class _CalendarPageState extends State<CalendarPage> {
           for (final m in ms) ...[
             ColorDot(m.color, size: 12),
             const SizedBox(width: 6),
-            Text(m.id == s.session?.memberId ? 'Я' : m.name,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            Text(
+              m.id == s.session?.memberId ? 'Я' : m.name,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
             const SizedBox(width: 16),
           ],
-          const Text('₽ выплата', style: TextStyle(fontSize: 12, color: kInkSoft)),
+          const Text(
+            '₽ выплата',
+            style: TextStyle(fontSize: 12, color: kInkSoft),
+          ),
           const SizedBox(width: 10),
-          const Text('● событие', style: TextStyle(fontSize: 12, color: kInkSoft)),
+          const Text(
+            '● событие',
+            style: TextStyle(fontSize: 12, color: kInkSoft),
+          ),
         ],
       ),
     );
@@ -254,7 +273,8 @@ class _CalendarPageState extends State<CalendarPage> {
           Navigator.push(
             context,
             MaterialPageRoute<void>(
-                builder: (_) => DayPage(store: s, date: dateOnly(d))),
+              builder: (_) => DayPage(store: s, date: dateOnly(d)),
+            ),
           );
         }
       },
@@ -271,8 +291,8 @@ class _CalendarPageState extends State<CalendarPage> {
               color: sel
                   ? const Color(0xFFE58E70)
                   : isToday
-                      ? const Color(0xFFE58E70)
-                      : Colors.transparent,
+                  ? const Color(0xFFE58E70)
+                  : Colors.transparent,
               width: sel || isToday ? 2 : 0,
             ),
           ),
@@ -282,23 +302,33 @@ class _CalendarPageState extends State<CalendarPage> {
               Row(
                 children: [
                   const SizedBox(width: 2),
-                  Text('${d.day}',
-                      style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: isToday ? FontWeight.w900 : FontWeight.w700)),
+                  Text(
+                    '${d.day}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: isToday ? FontWeight.w900 : FontWeight.w700,
+                    ),
+                  ),
                   const Spacer(),
                   if (pays.isNotEmpty)
-                    const Text('₽',
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFFD97B5C))),
+                    const Text(
+                      '₽',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFFD97B5C),
+                      ),
+                    ),
                   if (hasEvent)
-                    const Text('●',
-                        style: TextStyle(fontSize: 9, color: Color(0xFF8FB8E8))),
+                    const Text(
+                      '●',
+                      style: TextStyle(fontSize: 9, color: Color(0xFF8FB8E8)),
+                    ),
                   if (hasTodo)
-                    const Text('✓',
-                        style: TextStyle(fontSize: 10, color: Color(0xFF7DBE8B))),
+                    const Text(
+                      '✓',
+                      style: TextStyle(fontSize: 10, color: Color(0xFF7DBE8B)),
+                    ),
                 ],
               ),
               const SizedBox(height: 2),
@@ -341,11 +371,14 @@ class _CalendarPageState extends State<CalendarPage> {
               fit: BoxFit.scaleDown,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 2),
-                child: Text(text,
-                    style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: kInk)),
+                child: Text(
+                  text,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: kInk,
+                  ),
+                ),
               ),
             ),
     );

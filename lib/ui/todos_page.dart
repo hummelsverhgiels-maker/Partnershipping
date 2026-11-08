@@ -19,14 +19,16 @@ class TodosPage extends StatelessWidget {
         .where((t) => t.s('date') != null && t.s('date')!.compareTo(today) < 0)
         .toList();
     final todayList = open.where((t) => t.s('date') == today).toList();
-    final soon = open
-        .where((t) => t.s('date') != null && t.s('date')!.compareTo(today) > 0)
-        .toList()
-      ..sort((a, b) => a.s('date')!.compareTo(b.s('date')!));
+    final soon =
+        open
+            .where(
+              (t) => t.s('date') != null && t.s('date')!.compareTo(today) > 0,
+            )
+            .toList()
+          ..sort((a, b) => a.s('date')!.compareTo(b.s('date')!));
     final noDate = open.where((t) => t.s('date') == null).toList();
     final done = store.todos.where((t) => t.b('done')).toList()
-      ..sort((a, b) =>
-          (b.s('doneAt') ?? '').compareTo(a.s('doneAt') ?? ''));
+      ..sort((a, b) => (b.s('doneAt') ?? '').compareTo(a.s('doneAt') ?? ''));
 
     Widget group(String title, List<Rec> list, {bool showDate = false}) {
       if (list.isEmpty) return const SizedBox.shrink();
@@ -49,13 +51,18 @@ class TodosPage extends StatelessWidget {
         backgroundColor: const Color(0xFFE58E70),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
-        label: const Text('Новое дело',
-            style: TextStyle(fontWeight: FontWeight.w700)),
+        label: const Text(
+          'Новое дело',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
       ),
       body: store.todos.isEmpty
           ? const Center(
-              child: EmptyHint('Пока нет общих дел.\nДобавьте первое!',
-                  icon: Icons.checklist_rtl))
+              child: EmptyHint(
+                'Пока нет общих дел.\nДобавьте первое!',
+                icon: Icons.checklist_rtl,
+              ),
+            )
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
               children: [
@@ -69,11 +76,14 @@ class TodosPage extends StatelessWidget {
                         .copyWith(dividerColor: Colors.transparent),
                     child: ExpansionTile(
                       tilePadding: const EdgeInsets.symmetric(horizontal: 4),
-                      title: Text('СДЕЛАНО (${done.length})',
-                          style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              color: kInkSoft)),
+                      title: Text(
+                        'СДЕЛАНО (${done.length})',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: kInkSoft,
+                        ),
+                      ),
                       children: [
                         for (final t in done) ...[
                           TodoTile(store: store, todo: t, showDate: true),
@@ -82,8 +92,10 @@ class TodosPage extends StatelessWidget {
                         TextButton(
                           onPressed: () async {
                             if (await confirm(
-                                context, 'Удалить все сделанные дела?',
-                                yes: 'Удалить')) {
+                              context,
+                              'Удалить все сделанные дела?',
+                              yes: 'Удалить',
+                            )) {
                               for (final t in done) {
                                 store.remove(t.id);
                               }

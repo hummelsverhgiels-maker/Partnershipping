@@ -67,6 +67,11 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
 
+// Мгновенные уведомления (Firebase): включаются, когда рядом лежит google-services.json
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 flutter {
     source = "../.."
 }

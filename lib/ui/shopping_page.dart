@@ -45,9 +45,11 @@ class _ShoppingPageState extends State<ShoppingPage> {
           if (bought.isNotEmpty)
             TextButton.icon(
               onPressed: () async {
-                if (await confirm(context,
-                    'Удалить ${bought.length} купленных из списка?',
-                    yes: 'Очистить')) {
+                if (await confirm(
+                  context,
+                  'Удалить ${bought.length} купленных из списка?',
+                  yes: 'Очистить',
+                )) {
                   for (final r in bought) {
                     s.remove(r.id);
                   }
@@ -80,8 +82,9 @@ class _ShoppingPageState extends State<ShoppingPage> {
                   height: 56,
                   child: FilledButton(
                     style: FilledButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(56, 56)),
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(56, 56),
+                    ),
                     onPressed: _add,
                     child: const Icon(Icons.add, size: 30),
                   ),
@@ -92,8 +95,11 @@ class _ShoppingPageState extends State<ShoppingPage> {
           Expanded(
             child: s.shopping.isEmpty
                 ? const Center(
-                    child: EmptyHint('Список пуст.\nДобавьте первую покупку.',
-                        icon: Icons.shopping_basket_outlined))
+                    child: EmptyHint(
+                      'Список пуст.\nДобавьте первую покупку.',
+                      icon: Icons.shopping_basket_outlined,
+                    ),
+                  )
                 : ListView(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                     children: [
@@ -120,23 +126,26 @@ class _ShoppingPageState extends State<ShoppingPage> {
           alignment: Alignment.centerRight,
           padding: const EdgeInsets.only(right: 24),
           decoration: BoxDecoration(
-              color: const Color(0xFFF7B7B7),
-              borderRadius: BorderRadius.circular(22)),
+            color: const Color(0xFFF7B7B7),
+            borderRadius: BorderRadius.circular(22),
+          ),
           child: const Icon(Icons.delete_outline, color: kInk),
         ),
         onDismissed: (_) => s.remove(r.id),
         child: SoftCard(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-          onTap: () => s.upsert('shopping', {...r.data, 'bought': !bought},
-              id: r.id),
+          onTap: () =>
+              s.upsert('shopping', {...r.data, 'bought': !bought}, id: r.id),
           child: Row(
             children: [
               Checkbox(
                 value: bought,
                 shape: const CircleBorder(),
                 side: const BorderSide(color: kInkSoft, width: 2),
-                onChanged: (v) =>
-                    s.upsert('shopping', {...r.data, 'bought': v ?? false}, id: r.id),
+                onChanged: (v) => s.upsert('shopping', {
+                  ...r.data,
+                  'bought': v ?? false,
+                }, id: r.id),
               ),
               Expanded(
                 child: Text(

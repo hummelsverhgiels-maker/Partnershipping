@@ -13,13 +13,8 @@ class _Op {
   final bool isDelete;
   final Rec? rec;
   final String id;
-  _Op.upsert(Rec r)
-      : isDelete = false,
-        rec = r,
-        id = r.id;
-  _Op.delete(this.id)
-      : isDelete = true,
-        rec = null;
+  _Op.upsert(Rec r) : isDelete = false, rec = r, id = r.id;
+  _Op.delete(this.id) : isDelete = true, rec = null;
 
   Map<String, dynamic> toJson() =>
       isDelete ? {'t': 'd', 'id': id} : {'t': 'u', 'rec': rec!.toJson()};
@@ -58,6 +53,7 @@ class AppStore extends ChangeNotifier {
   List<Rec> shopping = [];
   List<Rec> todos = [];
   List<Rec> templates = [];
+  List<Rec> messages = [];
 
   bool get hasSession => session != null;
   bool get isLocal => session?.local ?? true;
@@ -111,13 +107,18 @@ class AppStore extends ChangeNotifier {
       if (r != null) {
         _recs = {
           for (final e in jsonDecode(r) as List)
-            (e['id'] as String): Rec.fromJson(Map<String, dynamic>.from(e as Map))
+            (e['id'] as String): Rec.fromJson(
+              Map<String, dynamic>.from(e as Map),
+            ),
         };
       }
       final o = _prefs!.getString('outbox');
       if (o != null) {
-        _outbox.addAll((jsonDecode(o) as List)
-            .map((e) => _Op.fromJson(Map<String, dynamic>.from(e as Map))));
+        _outbox.addAll(
+          (jsonDecode(o) as List).map(
+            (e) => _Op.fromJson(Map<String, dynamic>.from(e as Map)),
+          ),
+        );
       }
     } catch (e) {
       debugPrint('Ошибка чтения локальных данных: $e');
@@ -128,8 +129,7 @@ class AppStore extends ChangeNotifier {
     if (session != null) _connect();
   }
 
-  bool getFlag(String key, {bool def = true}) =>
-      _prefs?.getBool(key) ?? def;
+  bool getFlag(String key, {bool def = true}) => _prefs?.getBool(key) ?? def;
 
   Future<void> setFlag(String key, bool v) async {
     await _prefs?.setBool(key, v);
@@ -140,7 +140,11 @@ class AppStore extends ChangeNotifier {
   Future<void> startLocal(String name, int color) async {
     final id = newId();
     session = PairSession(
-        pairId: newId(), code: 'LOCAL', memberId: id, local: true);
+      pairId: newId(),
+      code: 'LOCAL',
+      memberId: id,
+      local: true,
+    );
     members = [Member(id: id, name: name, color: color)];
     _recs = {};
     await _persistAll();
@@ -216,17 +220,13 @@ class AppStore extends ChangeNotifier {
     }
     await _recSub?.cancel();
     await _memSub?.cancel();
-    _recSub = Backend.recordsStream(s.pairId).listen(
-      (rows) {
-        online = true;
-        _applyRecords(rows);
-      },
-      onError: (_) => _scheduleRetry(),
-    );
-    _memSub = Backend.membersStream(s.pairId).listen(
-      (rows) => _applyMembers(rows),
-      onError: (_) => _scheduleRetry(),
-    );
+    _recSub = Backend.recordsStream(s.pairId).listen((rows) {
+      online = true;
+      _applyRecords(rows);
+    }, onError: (_) => _scheduleRetry());
+    _memSub = Backend.membersStream(
+      s.pairId,
+    ).listen((rows) => _applyMembers(rows), onError: (_) => _scheduleRetry());
     _timer ??= Timer.periodic(const Duration(seconds: 30), (_) => refresh());
     await refresh();
   }
@@ -292,7 +292,10 @@ class AppStore extends ChangeNotifier {
     final next = rows.map(Member.fromJson).toList();
     // Мой порядок не важен, важно только содержимое.
     members = next;
-    _prefs?.setString('members', jsonEncode(next.map((m) => m.toJson()).toList()));
+    _prefs?.setString(
+      'members',
+      jsonEncode(next.map((m) => m.toJson()).toList()),
+    );
     _rebuild();
     notifyListeners();
   }
@@ -307,7 +310,8 @@ class AppStore extends ChangeNotifier {
     }
     // Свои ещё не отправленные изменения поверх серверных.
     _grace.removeWhere(
-        (g) => DateTime.now().difference(g.$2) > const Duration(seconds: 20));
+      (g) => DateTime.now().difference(g.$2) > const Duration(seconds: 20),
+    );
     for (final op in [..._grace.map((g) => g.$1), ..._outbox]) {
       if (op.isDelete) {
         next.remove(op.id);
@@ -347,10 +351,48 @@ class AppStore extends ChangeNotifier {
         return 'shopping';
       case 'todo':
         return 'todo';
+      case 'message':
+        return 'chat';
       case 'event':
         return 'event';
     }
     return null;
+  }
+
+  // ------------------------------------------------------------- чат
+  int get chatSeen => _prefs?.getInt('chat_seen') ?? 0;
+
+  int get unreadChat {
+    final meId = session?.memberId;
+    final seen = chatSeen;
+    return messages
+        .where((m) => m.updatedBy != meId && (m.i('ts') ?? 0) > seen)
+        .length;
+  }
+
+  Future<void> markChatSeen() async {
+    final latest = messages.isEmpty ? 0 : (messages.last.i('ts') ?? 0);
+    if (latest <= chatSeen) return;
+    await _prefs?.setInt('chat_seen', latest);
+    notifyListeners();
+  }
+
+  void sendMessage(String text) {
+    final t = text.trim();
+    if (t.isEmpty) return;
+    upsert('message', {'text': t, 'ts': DateTime.now().millisecondsSinceEpoch});
+  }
+
+  /// Запомнить токен этого устройства для мгновенных уведомлений.
+  Future<void> registerDevice(String token, String platform) async {
+    final s = session;
+    if (s == null || s.local || !Backend.configured) return;
+    try {
+      await Backend.ensureSignedIn();
+      await Backend.upsertDevice(s.pairId, s.memberId, token, platform);
+    } catch (e) {
+      debugPrint('Устройство не зарегистрировано: $e');
+    }
   }
 
   // --------------------------------------------------------- записи
@@ -390,9 +432,12 @@ class AppStore extends ChangeNotifier {
     if (id == null) return;
     members = [
       for (final m in members)
-        if (m.id == id) Member(id: id, name: name, color: color) else m
+        if (m.id == id) Member(id: id, name: name, color: color) else m,
     ];
-    _prefs?.setString('members', jsonEncode(members.map((m) => m.toJson()).toList()));
+    _prefs?.setString(
+      'members',
+      jsonEncode(members.map((m) => m.toJson()).toList()),
+    );
     notifyListeners();
     if (!isLocal) {
       try {
@@ -406,17 +451,24 @@ class AppStore extends ChangeNotifier {
 
   // ----------------------------------------------- смены и выходные
   void _clearDay(String memberId, String date) {
-    final victims = _recs.values.where((r) =>
-        (r.kind == 'shift' || r.kind == 'dayoff') &&
-        r.s('memberId') == memberId &&
-        r.s('date') == date);
+    final victims = _recs.values.where(
+      (r) =>
+          (r.kind == 'shift' || r.kind == 'dayoff') &&
+          r.s('memberId') == memberId &&
+          r.s('date') == date,
+    );
     for (final r in victims.toList()) {
       _recs.remove(r.id);
       _outbox.add(_Op.delete(r.id));
     }
   }
 
-  void setShift(String memberId, Iterable<DateTime> days, String start, String end) {
+  void setShift(
+    String memberId,
+    Iterable<DateTime> days,
+    String start,
+    String end,
+  ) {
     for (final d in days) {
       final date = ymd(d);
       _clearDay(memberId, date);
@@ -465,8 +517,10 @@ class AppStore extends ChangeNotifier {
     for (final r in _recs.values) {
       if (r.kind == 'prefs' && r.s('memberId') == memberId) existing = r;
     }
-    upsert('prefs', {'memberId': memberId, 'shiftPay': value},
-        id: existing?.id);
+    upsert('prefs', {
+      'memberId': memberId,
+      'shiftPay': value,
+    }, id: existing?.id);
   }
 
   // -------------------------------------------------- производные
@@ -480,6 +534,7 @@ class AppStore extends ChangeNotifier {
     final sh = <Rec>[];
     final td = <Rec>[];
     final tp = <Rec>[];
+    final msgs = <Rec>[];
     for (final r in _recs.values) {
       switch (r.kind) {
         case 'shift':
@@ -517,6 +572,8 @@ class AppStore extends ChangeNotifier {
           td.add(r);
         case 'template':
           tp.add(r);
+        case 'message':
+          msgs.add(r);
       }
     }
     // Если смена и «выходной» вдруг оба есть (две правки одновременно) — побеждает смена.
@@ -534,6 +591,8 @@ class AppStore extends ChangeNotifier {
     sh.sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
     td.sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
     tp.sort((a, b) => (a.s('start') ?? '').compareTo(b.s('start') ?? ''));
+    msgs.sort((a, b) => (a.i('ts') ?? 0).compareTo(b.i('ts') ?? 0));
+    messages = msgs;
     events = ev;
     shopping = sh;
     todos = td;
@@ -545,16 +604,23 @@ class AppStore extends ChangeNotifier {
     final p = _prefs;
     if (p == null) return;
     await p.setString('session', jsonEncode(session!.toJson()));
-    await p.setString('members', jsonEncode(members.map((m) => m.toJson()).toList()));
+    await p.setString(
+      'members',
+      jsonEncode(members.map((m) => m.toJson()).toList()),
+    );
     await _saveRecs();
     await _saveOutbox();
   }
 
   Future<void> _saveRecs() async => _prefs?.setString(
-      'recs', jsonEncode(_recs.values.map((r) => r.toJson()).toList()));
+    'recs',
+    jsonEncode(_recs.values.map((r) => r.toJson()).toList()),
+  );
 
   Future<void> _saveOutbox() async => _prefs?.setString(
-      'outbox', jsonEncode(_outbox.map((o) => o.toJson()).toList()));
+    'outbox',
+    jsonEncode(_outbox.map((o) => o.toJson()).toList()),
+  );
 
   @override
   void dispose() {

@@ -34,8 +34,11 @@ ThemeData buildTheme() {
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: false,
-      titleTextStyle:
-          TextStyle(color: kInk, fontSize: 22, fontWeight: FontWeight.w700),
+      titleTextStyle: TextStyle(
+        color: kInk,
+        fontSize: 22,
+        fontWeight: FontWeight.w700,
+      ),
     ),
     cardTheme: CardThemeData(
       color: Colors.white,
@@ -48,7 +51,8 @@ ThemeData buildTheme() {
       indicatorColor: kAccentSoft,
       height: 68,
       labelTextStyle: WidgetStateProperty.all(
-          const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+      ),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
@@ -70,8 +74,7 @@ ThemeData buildTheme() {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: Colors.white,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
         borderSide: const BorderSide(color: Color(0xFFEBDDD4)),

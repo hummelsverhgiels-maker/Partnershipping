@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../data/store.dart';
 import '../services/notifier.dart';
+import '../services/push_service.dart';
 import '../services/scriptable.dart';
 import '../util.dart';
 import 'common.dart';
@@ -19,10 +21,12 @@ class SettingsPage extends StatelessWidget {
     final myId = store.session!.memberId;
     final rules = store.schedule.rules.where((r) => r.memberId == myId).toList()
       ..sort((a, b) => a.day.compareTo(b.day));
-    final dates = store.schedule.payDates.where((r) => r.memberId == myId).toList()
-      ..sort((a, b) => a.date.compareTo(b.date));
-    final templates =
-        store.templates.where((t) => t.s('memberId') == myId).toList();
+    final dates =
+        store.schedule.payDates.where((r) => r.memberId == myId).toList()
+          ..sort((a, b) => a.date.compareTo(b.date));
+    final templates = store.templates
+        .where((t) => t.s('memberId') == myId)
+        .toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Настройки')),
@@ -37,9 +41,13 @@ class SettingsPage extends StatelessWidget {
                 ColorDot(me?.color ?? kMemberColors.first, size: 34),
                 const SizedBox(width: 14),
                 Expanded(
-                  child: Text(me?.name ?? '',
-                      style: const TextStyle(
-                          fontSize: 20, fontWeight: FontWeight.w800)),
+                  child: Text(
+                    me?.name ?? '',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
                 const Icon(Icons.edit_outlined, color: kInkSoft),
               ],
@@ -51,28 +59,36 @@ class SettingsPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (store.isLocal) ...[
-                  const Text('Работа без пары',
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                  const Text(
+                    'Работа без пары',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                  ),
                   const SizedBox(height: 4),
                   const Text(
-                      'Данные хранятся только на этом телефоне. '
-                      'Когда сервер синхронизации будет подключён, нажмите «Выйти» и создайте пару.',
-                      style: TextStyle(color: kInkSoft)),
+                    'Данные хранятся только на этом телефоне. '
+                    'Когда сервер синхронизации будет подключён, нажмите «Выйти» и создайте пару.',
+                    style: TextStyle(color: kInkSoft),
+                  ),
                 ] else ...[
                   const Text('Код пары', style: TextStyle(color: kInkSoft)),
                   Row(
                     children: [
                       Expanded(
-                        child: Text(store.session!.code,
-                            style: const TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 5)),
+                        child: Text(
+                          store.session!.code,
+                          style: const TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 5,
+                          ),
+                        ),
                       ),
                       IconButton(
                         tooltip: 'Скопировать',
                         onPressed: () {
-                          Clipboard.setData(ClipboardData(text: store.session!.code));
+                          Clipboard.setData(
+                            ClipboardData(text: store.session!.code),
+                          );
                           toast(context, 'Код скопирован');
                         },
                         icon: const Icon(Icons.copy_rounded),
@@ -85,11 +101,15 @@ class SettingsPage extends StatelessWidget {
                       if (partner != null) ...[
                         ColorDot(partner.color),
                         const SizedBox(width: 8),
-                        Text('Партнёр: ${partner.name}',
-                            style: const TextStyle(fontWeight: FontWeight.w600)),
+                        Text(
+                          'Партнёр: ${partner.name}',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
                       ] else
-                        const Text('Партнёр ещё не подключился',
-                            style: TextStyle(color: kInkSoft)),
+                        const Text(
+                          'Партнёр ещё не подключился',
+                          style: TextStyle(color: kInkSoft),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -104,7 +124,10 @@ class SettingsPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (templates.isEmpty)
-                  const Text('Пока нет шаблонов', style: TextStyle(color: kInkSoft)),
+                  const Text(
+                    'Пока нет шаблонов',
+                    style: TextStyle(color: kInkSoft),
+                  ),
                 Wrap(
                   spacing: 8,
                   children: [
@@ -129,8 +152,10 @@ class SettingsPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Каждый месяц',
-                    style: TextStyle(fontWeight: FontWeight.w800)),
+                const Text(
+                  'Каждый месяц',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
                 const SizedBox(height: 6),
                 if (rules.isEmpty)
                   const Text('Не заданы', style: TextStyle(color: kInkSoft)),
@@ -150,8 +175,10 @@ class SettingsPage extends StatelessWidget {
                   label: const Text('Добавить день выплаты'),
                 ),
                 const Divider(height: 28),
-                const Text('Разовые даты',
-                    style: TextStyle(fontWeight: FontWeight.w800)),
+                const Text(
+                  'Разовые даты',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
                 const SizedBox(height: 6),
                 if (dates.isEmpty)
                   const Text('Не заданы', style: TextStyle(color: kInkSoft)),
@@ -159,8 +186,7 @@ class SettingsPage extends StatelessWidget {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Text('📅', style: TextStyle(fontSize: 22)),
-                    title: Text(
-                        '${d.label}: ${longDate(parseYmd(d.date))}'),
+                    title: Text('${d.label}: ${longDate(parseYmd(d.date))}'),
                     trailing: IconButton(
                       icon: const Icon(Icons.close),
                       onPressed: () => store.remove(d.id),
@@ -178,7 +204,8 @@ class SettingsPage extends StatelessWidget {
                   onChanged: (v) => store.setShiftPay(myId, v),
                   title: const Text('Сдвигать выплату с выходного'),
                   subtitle: const Text(
-                      'Если в день ежемесячной выплаты у вас нет смены, она переносится на предыдущий день со сменой.'),
+                    'Если в день ежемесячной выплаты у вас нет смены, она переносится на предыдущий день со сменой.',
+                  ),
                 ),
               ],
             ),
@@ -190,25 +217,34 @@ class SettingsPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                      'Если приложение стоит на iPhone без виджета, можно сделать виджет '
-                      'через бесплатное приложение Scriptable.',
-                      style: TextStyle(color: kInkSoft)),
+                    'Если приложение стоит на iPhone без виджета, можно сделать виджет '
+                    'через бесплатное приложение Scriptable.',
+                    style: TextStyle(color: kInkSoft),
+                  ),
                   const SizedBox(height: 10),
                   const Text(
-                      '1. На iPhone поставьте «Scriptable» из App Store.\n'
-                      '2. Нажмите кнопку ниже: скрипт скопируется.\n'
-                      '3. В Scriptable: «+» → вставьте скрипт → назовите «Выходные».\n'
-                      '4. На рабочем столе: долгое нажатие → «+» → Scriptable → '
-                      'средний размер → «Добавить». Нажмите на виджет → Script: «Выходные».',
-                      style: TextStyle(height: 1.4)),
+                    '1. На iPhone поставьте «Scriptable» из App Store.\n'
+                    '2. Нажмите кнопку ниже: скрипт скопируется.\n'
+                    '3. В Scriptable: «+» → вставьте скрипт → назовите «Выходные».\n'
+                    '4. На рабочем столе: долгое нажатие → «+» → Scriptable → '
+                    'средний размер → «Добавить». Нажмите на виджет → Script: «Выходные».',
+                    style: TextStyle(height: 1.4),
+                  ),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: () {
-                      Clipboard.setData(ClipboardData(
+                      Clipboard.setData(
+                        ClipboardData(
                           text: scriptableScript(
-                              code: store.session!.code,
-                              memberId: store.session!.memberId)));
-                      toast(context, 'Скрипт скопирован. Вставьте его в Scriptable');
+                            code: store.session!.code,
+                            memberId: store.session!.memberId,
+                          ),
+                        ),
+                      );
+                      toast(
+                        context,
+                        'Скрипт скопирован. Вставьте его в Scriptable',
+                      );
                     },
                     icon: const Icon(Icons.copy_rounded),
                     label: const Text('Скопировать скрипт виджета'),
@@ -221,6 +257,23 @@ class SettingsPage extends StatelessWidget {
           SoftCard(
             child: Column(
               children: [
+                if (PushService.active && kIsWeb)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final ok = await PushService.requestPermission(store);
+                        if (context.mounted) {
+                          toast(
+                            context,
+                            ok ? 'Мгновенные уведомления включены' : 'Не получилось. Разрешите уведомления в настройках iPhone',
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.notifications_active_outlined),
+                      label: const Text('Включить мгновенные уведомления'),
+                    ),
+                  ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: store.getFlag('notif_pay'),
@@ -229,7 +282,9 @@ class SettingsPage extends StatelessWidget {
                     if (v) await Notifier.requestPermission();
                   },
                   title: const Text('Напоминать о выплатах'),
-                  subtitle: const Text('За день до аванса или зарплаты, в 9:00'),
+                  subtitle: const Text(
+                    'За день до аванса или зарплаты, в 9:00',
+                  ),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
@@ -240,7 +295,8 @@ class SettingsPage extends StatelessWidget {
                   },
                   title: const Text('Когда партнёр что-то изменил'),
                   subtitle: const Text(
-                      'Приходит, пока приложение открыто или недавно было открыто'),
+                    'Приходит, пока приложение открыто или недавно было открыто',
+                  ),
                 ),
               ],
             ),
@@ -258,8 +314,10 @@ class SettingsPage extends StatelessWidget {
                 );
                 if (ok) await store.leavePair();
               },
-              child: const Text('Выйти из пары',
-                  style: TextStyle(color: Color(0xFFD9534F))),
+              child: const Text(
+                'Выйти из пары',
+                style: TextStyle(color: Color(0xFFD9534F)),
+              ),
             ),
           ),
         ],
@@ -272,24 +330,28 @@ class SettingsPage extends StatelessWidget {
     final ok = store.online && pending == 0;
     return Row(
       children: [
-        Icon(ok ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
-            size: 20, color: ok ? const Color(0xFF6DBE8B) : kInkSoft),
+        Icon(
+          ok ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
+          size: 20,
+          color: ok ? const Color(0xFF6DBE8B) : kInkSoft,
+        ),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             ok
                 ? 'Синхронизировано'
                 : store.online
-                    ? 'Отправляю изменения: $pending'
-                    : 'Нет связи с сервером${pending > 0 ? ' · ждёт отправки: $pending' : ''}'
-                        '${store.lastError != null ? '\n${store.lastError}' : ''}',
+                ? 'Отправляю изменения: $pending'
+                : 'Нет связи с сервером${pending > 0 ? ' · ждёт отправки: $pending' : ''}'
+                      '${store.lastError != null ? '\n${store.lastError}' : ''}',
             style: const TextStyle(color: kInkSoft, fontSize: 13),
           ),
         ),
         IconButton(
-            tooltip: 'Обновить',
-            onPressed: store.refresh,
-            icon: const Icon(Icons.refresh)),
+          tooltip: 'Обновить',
+          onPressed: store.refresh,
+          icon: const Icon(Icons.refresh),
+        ),
       ],
     );
   }
@@ -305,13 +367,19 @@ class SettingsPage extends StatelessWidget {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) => Padding(
           padding: EdgeInsets.fromLTRB(
-              20, 0, 20, 20 + MediaQuery.of(ctx).viewInsets.bottom),
+            20,
+            0,
+            20,
+            20 + MediaQuery.of(ctx).viewInsets.bottom,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Моё имя и цвет',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              const Text(
+                'Моё имя и цвет',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+              ),
               const SizedBox(height: 14),
               TextField(
                 controller: name,
@@ -319,7 +387,10 @@ class SettingsPage extends StatelessWidget {
                 decoration: const InputDecoration(hintText: 'Имя'),
               ),
               const SizedBox(height: 16),
-              ColorPicker(selected: color, onChanged: (c) => setState(() => color = c)),
+              ColorPicker(
+                selected: color,
+                onChanged: (c) => setState(() => color = c),
+              ),
               const SizedBox(height: 20),
               FilledButton(
                 onPressed: () {
@@ -373,7 +444,9 @@ class SettingsPage extends StatelessWidget {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Отмена'),
+            ),
             TextButton(
               onPressed: () {
                 store.upsert('template', {
@@ -420,19 +493,26 @@ class SettingsPage extends StatelessWidget {
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 maxLength: 2,
                 decoration: const InputDecoration(
-                    labelText: 'Число месяца (1–31)', counterText: ''),
+                  labelText: 'Число месяца (1–31)',
+                  counterText: '',
+                ),
               ),
             ],
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Отмена'),
+            ),
             TextButton(
               onPressed: () {
                 final n = int.tryParse(day.text);
                 if (n == null || n < 1 || n > 31) return;
-                store.upsert('payrule',
-                    {'memberId': myId, 'day': n, 'label': label});
+                store.upsert('payrule', {
+                  'memberId': myId,
+                  'day': n,
+                  'label': label,
+                });
                 Navigator.pop(ctx);
               },
               child: const Text('Добавить'),
@@ -459,13 +539,17 @@ class SettingsPage extends StatelessWidget {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Отмена'),
+          ),
           TextButton(
             onPressed: () {
               store.upsert('paydate', {
                 'memberId': myId,
                 'date': ymd(d),
-                'label': custom.text.trim().isEmpty ? 'Выплата' : custom.text.trim(),
+                'label': custom.text.trim().isEmpty
+                    ? 'Выплата'
+                    : custom.text.trim(),
               });
               Navigator.pop(ctx);
             },

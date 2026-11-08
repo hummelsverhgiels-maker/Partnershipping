@@ -24,7 +24,11 @@ class WidgetService {
 
   /// Три строки для зрителя [viewer] на день [day].
   static List<String> lines(
-      AppStore store, Member viewer, Member? other, DateTime day) {
+    AppStore store,
+    Member viewer,
+    Member? other,
+    DateTime day,
+  ) {
     final sch = store.schedule;
     final mine = nextOff(day, (d) => sch.isOff(viewer.id, d));
     final out = <String>['Я: ${offSentence(day, mine)}'];
@@ -32,7 +36,9 @@ class WidgetService {
       final theirs = nextOff(day, (d) => sch.isOff(other.id, d));
       out.add('${other.name}: ${offSentence(day, theirs)}');
       final both = nextOff(
-          day, (d) => sch.isOff(viewer.id, d) && sch.isOff(other.id, d));
+        day,
+        (d) => sch.isOff(viewer.id, d) && sch.isOff(other.id, d),
+      );
       out.add('Вместе: ${offSentence(day, both)}');
     } else {
       out.add('Партнёр ещё не подключён');
@@ -60,7 +66,9 @@ class WidgetService {
           await HomeWidget.saveWidgetData<String>('wb_$key', l[2]);
         }
         await HomeWidget.updateWidget(
-            qualifiedAndroidName: _provider, iOSName: _iosWidget);
+          qualifiedAndroidName: _provider,
+          iOSName: _iosWidget,
+        );
       } catch (e) {
         debugPrint('Виджет не обновлён: $e');
       }
@@ -70,10 +78,7 @@ class WidgetService {
     if (!store.isLocal && Backend.configured && store.online) {
       try {
         final s = store.session!;
-        final people = [
-          (me, partner),
-          if (partner != null) (partner, me),
-        ];
+        final people = [(me, partner), if (partner != null) (partner, me)];
         final payloads = <String, Map<String, dynamic>>{};
         for (final (viewer, other) in people) {
           final data = <String, dynamic>{};

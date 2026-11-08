@@ -14,7 +14,10 @@ class Backend {
 
   static Future<void> init() async {
     if (!configured || _initialized) return;
-    await Supabase.initialize(url: kSupabaseUrl, publishableKey: kSupabaseAnonKey);
+    await Supabase.initialize(
+      url: kSupabaseUrl,
+      publishableKey: kSupabaseAnonKey,
+    );
     _initialized = true;
   }
 
@@ -30,8 +33,12 @@ class Backend {
 
   static Future<PairSession> createPair(String name, int color) async {
     await ensureSignedIn();
-    final r = _asMap(await client
-        .rpc('create_pair', params: {'p_name': name, 'p_color': color}));
+    final r = _asMap(
+      await client.rpc(
+        'create_pair',
+        params: {'p_name': name, 'p_color': color},
+      ),
+    );
     return PairSession(
       pairId: r['pair_id'] as String,
       code: r['code'] as String,
@@ -42,7 +49,8 @@ class Backend {
 
   /// null — пара с таким кодом не найдена.
   static Future<({String pairId, List<Member> members})?> findPair(
-      String code) async {
+    String code,
+  ) async {
     await ensureSignedIn();
     final r = await client.rpc('find_pair', params: {'p_code': code});
     if (r == null) return null;
@@ -55,10 +63,18 @@ class Backend {
     );
   }
 
-  static Future<PairSession> joinPair(String code, String name, int color) async {
+  static Future<PairSession> joinPair(
+    String code,
+    String name,
+    int color,
+  ) async {
     await ensureSignedIn();
-    final r = _asMap(await client.rpc('join_pair',
-        params: {'p_code': code, 'p_name': name, 'p_color': color}));
+    final r = _asMap(
+      await client.rpc(
+        'join_pair',
+        params: {'p_code': code, 'p_name': name, 'p_color': color},
+      ),
+    );
     return PairSession(
       pairId: r['pair_id'] as String,
       code: r['code'] as String,
@@ -69,8 +85,12 @@ class Backend {
 
   static Future<PairSession> claimMember(String code, String memberId) async {
     await ensureSignedIn();
-    final r = _asMap(await client.rpc('claim_member',
-        params: {'p_code': code, 'p_member_id': memberId}));
+    final r = _asMap(
+      await client.rpc(
+        'claim_member',
+        params: {'p_code': code, 'p_member_id': memberId},
+      ),
+    );
     return PairSession(
       pairId: r['pair_id'] as String,
       code: r['code'] as String,
@@ -80,14 +100,10 @@ class Backend {
   }
 
   static Stream<List<Map<String, dynamic>>> recordsStream(String pairId) =>
-      client
-          .from('records')
-          .stream(primaryKey: ['id']).eq('pair_id', pairId);
+      client.from('records').stream(primaryKey: ['id']).eq('pair_id', pairId);
 
   static Stream<List<Map<String, dynamic>>> membersStream(String pairId) =>
-      client
-          .from('members')
-          .stream(primaryKey: ['id']).eq('pair_id', pairId);
+      client.from('members').stream(primaryKey: ['id']).eq('pair_id', pairId);
 
   static Future<List<Map<String, dynamic>>> fetchRecords(String pairId) async {
     final r = await client.from('records').select().eq('pair_id', pairId);
@@ -115,7 +131,10 @@ class Backend {
 
   /// Готовые тексты для виджета (читаются из Scriptable по коду пары).
   static Future<void> upsertWidget(
-      String pairId, String memberId, Map<String, dynamic> data) async {
+    String pairId,
+    String memberId,
+    Map<String, dynamic> data,
+  ) async {
     await client.from('widget_cache').upsert({
       'member_id': memberId,
       'pair_id': pairId,
@@ -124,10 +143,26 @@ class Backend {
     });
   }
 
+  static Future<void> upsertDevice(
+    String pairId,
+    String memberId,
+    String token,
+    String platform,
+  ) async {
+    await client.from('devices').upsert({
+      'token': token,
+      'member_id': memberId,
+      'pair_id': pairId,
+      'platform': platform,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    });
+  }
+
   static Future<void> updateMember(String id, String name, int color) async {
     await client
         .from('members')
-        .update({'name': name, 'color': color}).eq('id', id);
+        .update({'name': name, 'color': color})
+        .eq('id', id);
   }
 
   /// Человекочитаемая ошибка.

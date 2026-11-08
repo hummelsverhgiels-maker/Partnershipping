@@ -2,7 +2,8 @@ import '../config.dart';
 
 /// Готовый скрипт для бесплатного приложения Scriptable (iPhone).
 /// Он берёт тексты виджета с сервера по коду пары и рисует виджет.
-String scriptableScript({required String code, required String memberId}) => '''
+String scriptableScript({required String code, required String memberId}) =>
+    '''
 // Виджет «V&V loving planning»: ближайшие выходные
 const URL_BASE = "$kSupabaseUrl";
 const KEY = "$kSupabaseAnonKey";

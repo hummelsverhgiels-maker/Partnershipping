@@ -4,7 +4,11 @@
 const String _defaultUrl = 'https://vudeuntdodzktyzmbjqy.supabase.co';
 const String _defaultAnonKey = 'sb_publishable_uDBVh1eKO5IhVkZFzGPueQ_yVMPpIZl';
 
-const String kSupabaseUrl =
-    String.fromEnvironment('SUPABASE_URL', defaultValue: _defaultUrl);
-const String kSupabaseAnonKey =
-    String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: _defaultAnonKey);
+const String kSupabaseUrl = String.fromEnvironment(
+  'SUPABASE_URL',
+  defaultValue: _defaultUrl,
+);
+const String kSupabaseAnonKey = String.fromEnvironment(
+  'SUPABASE_ANON_KEY',
+  defaultValue: _defaultAnonKey,
+);

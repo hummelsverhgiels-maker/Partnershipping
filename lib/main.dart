@@ -8,6 +8,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'data/backend.dart';
 import 'data/store.dart';
 import 'services/notifier.dart';
+import 'services/push_service.dart';
 import 'services/widget_service.dart';
 import 'ui/home_shell.dart';
 import 'ui/onboarding.dart';
@@ -28,6 +29,7 @@ Future<void> main() async {
   }
   final store = AppStore();
   await store.init();
+  await PushService.init(store);
   runApp(PartnershippingApp(store: store));
 }
 
@@ -49,12 +51,20 @@ class _PartnershippingAppState extends State<PartnershippingApp>
     WidgetsBinding.instance.addObserver(this);
     widget.store.addListener(_onChanged);
     widget.store.onPartnerChange = (who, cats) {
+      // Если включены мгновенные уведомления (Firebase), их присылает сервер.
+      if (PushService.active) return;
       if (widget.store.getFlag('notif_partner')) {
-        Notifier.showPartnerChange(who, cats);
+        final msgs = widget.store.messages;
+        Notifier.showPartnerChange(
+          who,
+          cats,
+          lastMessage: msgs.isEmpty ? null : msgs.last.s('text'),
+        );
       }
     };
     if (widget.store.hasSession) {
       Notifier.requestPermission();
+      if (!kIsWeb) PushService.requestPermission(widget.store);
       _onChanged();
     }
   }
@@ -81,6 +91,7 @@ class _PartnershippingAppState extends State<PartnershippingApp>
     _debounce = Timer(const Duration(seconds: 1), () {
       if (!widget.store.hasSession) return;
       WidgetService.update(widget.store);
+      PushService.sync(widget.store);
       Notifier.reschedulePay(widget.store);
     });
   }
@@ -116,7 +127,8 @@ class _PartnershippingAppState extends State<PartnershippingApp>
         builder: (context, _) {
           if (!widget.store.loaded) {
             return const Scaffold(
-                body: Center(child: CircularProgressIndicator()));
+              body: Center(child: CircularProgressIndicator()),
+            );
           }
           if (!widget.store.hasSession) {
             return OnboardingScreen(store: widget.store);

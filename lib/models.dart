@@ -6,10 +6,10 @@ class Member {
   const Member({required this.id, required this.name, required this.color});
 
   factory Member.fromJson(Map<String, dynamic> j) => Member(
-        id: j['id'] as String,
-        name: (j['name'] as String?) ?? '',
-        color: (j['color'] as num).toInt(),
-      );
+    id: j['id'] as String,
+    name: (j['name'] as String?) ?? '',
+    color: (j['color'] as num).toInt(),
+  );
 
   Map<String, dynamic> toJson() => {'id': id, 'name': name, 'color': color};
 }
@@ -36,22 +36,22 @@ class Rec {
   int? i(String k) => (data[k] as num?)?.toInt();
 
   factory Rec.fromJson(Map<String, dynamic> j) => Rec(
-        id: j['id'] as String,
-        kind: j['kind'] as String,
-        data: Map<String, dynamic>.from((j['data'] as Map?) ?? const {}),
-        updatedBy: j['updated_by'] as String?,
-        updatedAt: DateTime.tryParse((j['updated_at'] as String?) ?? '')
-                ?.toLocal() ??
-            DateTime.fromMillisecondsSinceEpoch(0),
-      );
+    id: j['id'] as String,
+    kind: j['kind'] as String,
+    data: Map<String, dynamic>.from((j['data'] as Map?) ?? const {}),
+    updatedBy: j['updated_by'] as String?,
+    updatedAt:
+        DateTime.tryParse((j['updated_at'] as String?) ?? '')?.toLocal() ??
+        DateTime.fromMillisecondsSinceEpoch(0),
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'kind': kind,
-        'data': data,
-        'updated_by': updatedBy,
-        'updated_at': updatedAt.toUtc().toIso8601String(),
-      };
+    'id': id,
+    'kind': kind,
+    'data': data,
+    'updated_by': updatedBy,
+    'updated_at': updatedAt.toUtc().toIso8601String(),
+  };
 }
 
 class PairSession {
@@ -68,16 +68,16 @@ class PairSession {
   });
 
   factory PairSession.fromJson(Map<String, dynamic> j) => PairSession(
-        pairId: j['pairId'] as String,
-        code: j['code'] as String,
-        memberId: j['memberId'] as String,
-        local: j['local'] == true,
-      );
+    pairId: j['pairId'] as String,
+    code: j['code'] as String,
+    memberId: j['memberId'] as String,
+    local: j['local'] == true,
+  );
 
   Map<String, dynamic> toJson() => {
-        'pairId': pairId,
-        'code': code,
-        'memberId': memberId,
-        'local': local,
-      };
+    'pairId': pairId,
+    'code': code,
+    'memberId': memberId,
+    'local': local,
+  };
 }

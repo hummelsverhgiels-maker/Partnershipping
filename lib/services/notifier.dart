@@ -25,8 +25,8 @@ class Notifier {
     'partner',
     'Изменения партнёра',
     channelDescription: 'Когда партнёр поменял график или списки',
-    importance: Importance.defaultImportance,
-    priority: Priority.defaultPriority,
+    importance: Importance.high,
+    priority: Priority.high,
   );
 
   static Future<void> init() async {
@@ -48,6 +48,29 @@ class Notifier {
         ),
       ),
     );
+    if (Platform.isAndroid) {
+      // Каналы для уведомлений; в них же приходят мгновенные уведомления с сервера.
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      await android?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'partner',
+          'Изменения партнёра',
+          description: 'Сообщения и изменения от партнёра',
+          importance: Importance.high,
+        ),
+      );
+      await android?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'pay',
+          'Зарплата и аванс',
+          description: 'Напоминание за день до выплаты',
+          importance: Importance.high,
+        ),
+      );
+    }
     _ready = true;
   }
 
@@ -57,12 +80,14 @@ class Notifier {
     if (Platform.isAndroid) {
       await _plugin
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
+            AndroidFlutterLocalNotificationsPlugin
+          >()
           ?.requestNotificationsPermission();
     } else if (Platform.isIOS) {
       await _plugin
           .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>()
+            IOSFlutterLocalNotificationsPlugin
+          >()
           ?.requestPermissions(alert: true, badge: true, sound: true);
     }
   }
@@ -81,7 +106,12 @@ class Notifier {
       for (final p in items) {
         final remindDay = addDays(p.date, -1);
         final when = tz.TZDateTime(
-            tz.local, remindDay.year, remindDay.month, remindDay.day, 9);
+          tz.local,
+          remindDay.year,
+          remindDay.month,
+          remindDay.day,
+          9,
+        );
         if (!when.isAfter(tz.TZDateTime.now(tz.local))) continue;
         final mine = p.memberId == store.session?.memberId;
         final who = mine ? '' : ' у ${store.memberById(p.memberId)!.name}';
@@ -105,9 +135,30 @@ class Notifier {
     }
   }
 
-  static Future<void> showPartnerChange(String who, Set<String> cats) async {
+  static Future<void> showPartnerChange(
+    String who,
+    Set<String> cats, {
+    String? lastMessage,
+  }) async {
     if (!_ready) return;
+    if (cats.length == 1 && cats.contains('chat') && lastMessage != null) {
+      try {
+        await _plugin.show(
+          id: 2,
+          title: who,
+          body: lastMessage,
+          notificationDetails: const NotificationDetails(
+            android: _partnerChannel,
+            iOS: DarwinNotificationDetails(),
+          ),
+        );
+      } catch (e) {
+        debugPrint('Уведомление не показано: $e');
+      }
+      return;
+    }
     final parts = <String>[
+      if (cats.contains('chat')) 'сообщения',
       if (cats.contains('schedule')) 'график',
       if (cats.contains('event')) 'события',
       if (cats.contains('shopping')) 'покупки',

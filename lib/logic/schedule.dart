@@ -84,8 +84,11 @@ class Schedule {
   }
 
   /// Все выплаты, которые фактически приходятся на период [from, to].
-  List<PayItem> paymentsInRange(DateTime from, DateTime to,
-      {String? memberId}) {
+  List<PayItem> paymentsInRange(
+    DateTime from,
+    DateTime to, {
+    String? memberId,
+  }) {
     from = dateOnly(from);
     to = dateOnly(to);
     final out = <PayItem>[];
@@ -123,8 +126,11 @@ class Schedule {
 
 /// Ближайший выходной начиная с [from] (включая сегодняшний день)
 /// и сколько выходных идёт подряд.
-OffInfo? nextOff(DateTime from, bool Function(DateTime) isOff,
-    {int horizon = 60}) {
+OffInfo? nextOff(
+  DateTime from,
+  bool Function(DateTime) isOff, {
+  int horizon = 60,
+}) {
   from = dateOnly(from);
   for (var i = 0; i < horizon; i++) {
     final d = addDays(from, i);

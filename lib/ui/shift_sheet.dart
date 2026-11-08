@@ -53,8 +53,12 @@ class _ShiftSheetState extends State<_ShiftSheet> {
 
   bool get _overnight => minutesOf(_end) <= minutesOf(_start);
 
-  bool get _alreadyTemplate => s.templates.any((t) =>
-      t.s('memberId') == _member && t.s('start') == _start && t.s('end') == _end);
+  bool get _alreadyTemplate => s.templates.any(
+    (t) =>
+        t.s('memberId') == _member &&
+        t.s('start') == _start &&
+        t.s('end') == _end,
+  );
 
   void _done() => Navigator.pop(context);
 
@@ -64,26 +68,33 @@ class _ShiftSheetState extends State<_ShiftSheet> {
     final title = days.length == 1
         ? longDate(days.first)
         : '${days.length} ${plural(days.length, 'день', 'дня', 'дней')} выбрано';
-    final myTemplates =
-        s.templates.where((t) => t.s('memberId') == _member).toList();
+    final myTemplates = s.templates
+        .where((t) => t.s('memberId') == _member)
+        .toList();
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
-          20, 0, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
+        20,
+        0,
+        20,
+        20 + MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(title,
-                style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
             if (days.length > 1)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                    '${days.first.day}.${days.first.month} — ${days.last.day}.${days.last.month}',
-                    style: const TextStyle(color: kInkSoft)),
+                  '${days.first.day}.${days.first.month} — ${days.last.day}.${days.last.month}',
+                  style: const TextStyle(color: kInkSoft),
+                ),
               ),
             if (s.orderedMembers.length > 1) ...[
               const SectionTitle('Для кого'),
@@ -93,7 +104,9 @@ class _ShiftSheetState extends State<_ShiftSheet> {
                   for (final m in s.orderedMembers)
                     ChoiceChip(
                       avatar: ColorDot(m.color),
-                      label: Text(m.id == s.session!.memberId ? 'Я (${m.name})' : m.name),
+                      label: Text(
+                        m.id == s.session!.memberId ? 'Я (${m.name})' : m.name,
+                      ),
                       selected: _member == m.id,
                       onSelected: (_) => setState(() => _member = m.id),
                     ),
@@ -102,8 +115,10 @@ class _ShiftSheetState extends State<_ShiftSheet> {
             ],
             const SectionTitle('Быстрые шаблоны'),
             if (myTemplates.isEmpty)
-              const Text('Пока нет. Задайте время и отметьте «Сохранить как шаблон».',
-                  style: TextStyle(color: kInkSoft)),
+              const Text(
+                'Пока нет. Задайте время и отметьте «Сохранить как шаблон».',
+                style: TextStyle(color: kInkSoft),
+              ),
             Wrap(
               spacing: 8,
               runSpacing: 4,
@@ -128,7 +143,9 @@ class _ShiftSheetState extends State<_ShiftSheet> {
             const SectionTitle('Время смены'),
             Row(
               children: [
-                Expanded(child: _timeButton('Начало', _start, (v) => _start = v)),
+                Expanded(
+                  child: _timeButton('Начало', _start, (v) => _start = v),
+                ),
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 10),
                   child: Text('—', style: TextStyle(fontSize: 22)),
@@ -139,8 +156,10 @@ class _ShiftSheetState extends State<_ShiftSheet> {
             if (_overnight)
               const Padding(
                 padding: EdgeInsets.only(top: 8),
-                child: Text('🌙 Ночная смена: закончится на следующий день',
-                    style: TextStyle(color: kInkSoft)),
+                child: Text(
+                  '🌙 Ночная смена: закончится на следующий день',
+                  style: TextStyle(color: kInkSoft),
+                ),
               ),
             if (!_alreadyTemplate)
               CheckboxListTile(
@@ -154,8 +173,11 @@ class _ShiftSheetState extends State<_ShiftSheet> {
             FilledButton(
               onPressed: () {
                 if (_saveTemplate && !_alreadyTemplate) {
-                  s.upsert('template',
-                      {'memberId': _member, 'start': _start, 'end': _end});
+                  s.upsert('template', {
+                    'memberId': _member,
+                    'start': _start,
+                    'end': _end,
+                  });
                 }
                 s.setShift(_member, days, _start, _end);
                 _done();
@@ -203,8 +225,10 @@ class _ShiftSheetState extends State<_ShiftSheet> {
       child: Column(
         children: [
           Text(label, style: const TextStyle(color: kInkSoft, fontSize: 13)),
-          Text(value,
-              style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800)),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
+          ),
         ],
       ),
     );

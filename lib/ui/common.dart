@@ -40,21 +40,24 @@ class SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(4, 18, 4, 8),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(text,
-                  style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: kInkSoft,
-                      letterSpacing: 0.3)),
+    padding: const EdgeInsets.fromLTRB(4, 18, 4, 8),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: kInkSoft,
+              letterSpacing: 0.3,
             ),
-            ?trailing,
-          ],
+          ),
         ),
-      );
+        ?trailing,
+      ],
+    ),
+  );
 }
 
 class ColorDot extends StatelessWidget {
@@ -64,43 +67,47 @@ class ColorDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(color: Color(color), shape: BoxShape.circle),
-      );
+    width: size,
+    height: size,
+    decoration: BoxDecoration(color: Color(color), shape: BoxShape.circle),
+  );
 }
 
 class ColorPicker extends StatelessWidget {
   final int selected;
   final ValueChanged<int> onChanged;
-  const ColorPicker({super.key, required this.selected, required this.onChanged});
+  const ColorPicker({
+    super.key,
+    required this.selected,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) => Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        children: [
-          for (final c in kMemberColors)
-            GestureDetector(
-              onTap: () => onChanged(c),
-              child: Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: Color(c),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: c == selected ? kInk : Colors.transparent,
-                    width: 3,
-                  ),
-                ),
-                child: c == selected
-                    ? const Icon(Icons.check, color: kInk, size: 22)
-                    : null,
+    spacing: 12,
+    runSpacing: 12,
+    children: [
+      for (final c in kMemberColors)
+        GestureDetector(
+          onTap: () => onChanged(c),
+          child: Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: Color(c),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: c == selected ? kInk : Colors.transparent,
+                width: 3,
               ),
             ),
-        ],
-      );
+            child: c == selected
+                ? const Icon(Icons.check, color: kInk, size: 22)
+                : null,
+          ),
+        ),
+    ],
+  );
 }
 
 class EmptyHint extends StatelessWidget {
@@ -110,28 +117,32 @@ class EmptyHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 44, color: kInkSoft.withValues(alpha: 0.6)),
-            const SizedBox(height: 12),
-            Text(text,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: kInkSoft, fontSize: 15)),
-          ],
+    padding: const EdgeInsets.all(32),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 44, color: kInkSoft.withValues(alpha: 0.6)),
+        const SizedBox(height: 12),
+        Text(
+          text,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: kInkSoft, fontSize: 15),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 void toast(BuildContext context, String text) {
   ScaffoldMessenger.of(context)
     ..clearSnackBars()
-    ..showSnackBar(SnackBar(
-      content: Text(text),
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    ));
+    ..showSnackBar(
+      SnackBar(
+        content: Text(text),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    );
 }
 
 /// Выбор времени в 24-часовом формате.
@@ -182,8 +193,12 @@ Color softOn(int color) => Color(color);
 /// Имя участника (или заглушка).
 String nameOf(Member? m) => m?.name ?? 'Партнёр';
 
-Future<bool> confirm(BuildContext context, String text,
-    {String yes = 'Да', String no = 'Отмена'}) async {
+Future<bool> confirm(
+  BuildContext context,
+  String text, {
+  String yes = 'Да',
+  String no = 'Отмена',
+}) async {
   final r = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(

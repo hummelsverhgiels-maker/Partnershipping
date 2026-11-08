@@ -7,8 +7,12 @@ import 'common.dart';
 import 'theme.dart';
 
 /// Создание / правка события.
-Future<void> showEventSheet(BuildContext context, AppStore s,
-    {Rec? event, DateTime? date}) {
+Future<void> showEventSheet(
+  BuildContext context,
+  AppStore s, {
+  Rec? event,
+  DateTime? date,
+}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -56,21 +60,28 @@ class _EventSheetState extends State<_EventSheet> {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.fromLTRB(
-          20, 0, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
+        20,
+        0,
+        20,
+        20 + MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.event == null ? 'Новое событие' : 'Событие',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            Text(
+              widget.event == null ? 'Новое событие' : 'Событие',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: 14),
             TextField(
               controller: _title,
               autofocus: widget.event == null,
               textCapitalization: TextCapitalization.sentences,
               decoration: const InputDecoration(
-                  hintText: 'Название (поход, встреча, день рождения…)'),
+                hintText: 'Название (поход, встреча, день рождения…)',
+              ),
             ),
             const SizedBox(height: 12),
             Row(
@@ -82,7 +93,9 @@ class _EventSheetState extends State<_EventSheet> {
                       if (d != null) setState(() => _date = d);
                     },
                     icon: const Icon(Icons.event_outlined),
-                    label: Text('${_date.day}.${_date.month.toString().padLeft(2, '0')}.${_date.year}'),
+                    label: Text(
+                      '${_date.day}.${_date.month.toString().padLeft(2, '0')}.${_date.year}',
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -110,7 +123,9 @@ class _EventSheetState extends State<_EventSheet> {
               minLines: 2,
               maxLines: 4,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(hintText: 'Заметка (необязательно)'),
+              decoration: const InputDecoration(
+                hintText: 'Заметка (необязательно)',
+              ),
             ),
             const SizedBox(height: 16),
             FilledButton(
@@ -120,16 +135,12 @@ class _EventSheetState extends State<_EventSheet> {
                   toast(context, 'Введите название');
                   return;
                 }
-                widget.store.upsert(
-                  'event',
-                  {
-                    'title': title,
-                    'date': ymd(_date),
-                    if (_time != null) 'time': _time,
-                    if (_note.text.trim().isNotEmpty) 'note': _note.text.trim(),
-                  },
-                  id: widget.event?.id,
-                );
+                widget.store.upsert('event', {
+                  'title': title,
+                  'date': ymd(_date),
+                  if (_time != null) 'time': _time,
+                  if (_note.text.trim().isNotEmpty) 'note': _note.text.trim(),
+                }, id: widget.event?.id);
                 Navigator.pop(context);
               },
               child: const Text('Сохранить'),
@@ -138,12 +149,19 @@ class _EventSheetState extends State<_EventSheet> {
               const SizedBox(height: 8),
               TextButton(
                 onPressed: () async {
-                  if (await confirm(context, 'Удалить событие?', yes: 'Удалить')) {
+                  if (await confirm(
+                    context,
+                    'Удалить событие?',
+                    yes: 'Удалить',
+                  )) {
                     widget.store.remove(widget.event!.id);
                     if (context.mounted) Navigator.pop(context);
                   }
                 },
-                child: const Text('Удалить', style: TextStyle(color: Color(0xFFD9534F))),
+                child: const Text(
+                  'Удалить',
+                  style: TextStyle(color: Color(0xFFD9534F)),
+                ),
               ),
             ],
           ],
@@ -154,8 +172,12 @@ class _EventSheetState extends State<_EventSheet> {
 }
 
 /// Создание / правка дела.
-Future<void> showTodoSheet(BuildContext context, AppStore s,
-    {Rec? todo, DateTime? date}) {
+Future<void> showTodoSheet(
+  BuildContext context,
+  AppStore s, {
+  Rec? todo,
+  DateTime? date,
+}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -199,15 +221,11 @@ class _TodoSheetState extends State<_TodoSheet> {
       return;
     }
     final old = widget.todo;
-    widget.store.upsert(
-      'todo',
-      {
-        ...?old?.data,
-        'title': title,
-        if (_date != null) 'date': ymd(_date!) else 'date': null,
-      },
-      id: old?.id,
-    );
+    widget.store.upsert('todo', {
+      ...?old?.data,
+      'title': title,
+      if (_date != null) 'date': ymd(_date!) else 'date': null,
+    }, id: old?.id);
     Navigator.pop(context);
   }
 
@@ -215,13 +233,19 @@ class _TodoSheetState extends State<_TodoSheet> {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.fromLTRB(
-          20, 0, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
+        20,
+        0,
+        20,
+        20 + MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(widget.todo == null ? 'Новое дело' : 'Дело',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+          Text(
+            widget.todo == null ? 'Новое дело' : 'Дело',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 14),
           TextField(
             controller: _title,
@@ -236,13 +260,18 @@ class _TodoSheetState extends State<_TodoSheet> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () async {
-                    final d = await pickDate(context, _date ?? dateOnly(DateTime.now()));
+                    final d = await pickDate(
+                      context,
+                      _date ?? dateOnly(DateTime.now()),
+                    );
                     if (d != null) setState(() => _date = d);
                   },
                   icon: const Icon(Icons.event_outlined),
-                  label: Text(_date == null
-                      ? 'Без даты'
-                      : '${_date!.day}.${_date!.month.toString().padLeft(2, '0')}.${_date!.year}'),
+                  label: Text(
+                    _date == null
+                        ? 'Без даты'
+                        : '${_date!.day}.${_date!.month.toString().padLeft(2, '0')}.${_date!.year}',
+                  ),
                 ),
               ),
               if (_date != null)
@@ -263,8 +292,10 @@ class _TodoSheetState extends State<_TodoSheet> {
                   widget.store.remove(widget.todo!.id);
                   Navigator.pop(context);
                 },
-                child: const Text('Удалить',
-                    style: TextStyle(color: Color(0xFFD9534F))),
+                child: const Text(
+                  'Удалить',
+                  style: TextStyle(color: Color(0xFFD9534F)),
+                ),
               ),
             ),
           ],
@@ -279,8 +310,12 @@ class TodoTile extends StatelessWidget {
   final AppStore store;
   final Rec todo;
   final bool showDate;
-  const TodoTile(
-      {super.key, required this.store, required this.todo, this.showDate = false});
+  const TodoTile({
+    super.key,
+    required this.store,
+    required this.todo,
+    this.showDate = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -302,32 +337,32 @@ class TodoTile extends StatelessWidget {
             side: const BorderSide(color: kInkSoft, width: 2),
             onChanged: (v) {
               final nv = v ?? false;
-              store.upsert(
-                'todo',
-                {
-                  ...todo.data,
-                  'done': nv,
-                  'doneBy': nv ? store.session?.memberId : null,
-                  'doneAt': nv ? DateTime.now().toIso8601String() : null,
-                },
-                id: todo.id,
-              );
+              store.upsert('todo', {
+                ...todo.data,
+                'done': nv,
+                'doneBy': nv ? store.session?.memberId : null,
+                'doneAt': nv ? DateTime.now().toIso8601String() : null,
+              }, id: todo.id);
             },
           ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(todo.s('title') ?? '',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      decoration: done ? TextDecoration.lineThrough : null,
-                      color: done ? kInkSoft : kInk,
-                    )),
+                Text(
+                  todo.s('title') ?? '',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    decoration: done ? TextDecoration.lineThrough : null,
+                    color: done ? kInkSoft : kInk,
+                  ),
+                ),
                 if (sub.isNotEmpty)
-                  Text(sub.join(' · '),
-                      style: const TextStyle(fontSize: 13, color: kInkSoft)),
+                  Text(
+                    sub.join(' · '),
+                    style: const TextStyle(fontSize: 13, color: kInkSoft),
+                  ),
               ],
             ),
           ),
