@@ -9,6 +9,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[ios]')
@@ -39,3 +42,17 @@ jobs:
         with:
           name: ios-unsigned-ipa
           path: partnershipping-unsigned.ipa
+
+      - name: Выложить IPA в Releases (прямая ссылка для сервиса подписи)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NOTES="Неподписанная сборка для iPhone. Коммит: ${GITHUB_SHA::7}"
+          if gh release view ios-latest >/dev/null 2>&1; then
+            gh release delete ios-latest --cleanup-tag --yes
+          fi
+          gh release create ios-latest partnershipping-unsigned.ipa \
+            --target "$GITHUB_SHA" \
+            --title "iPhone: неподписанная версия" \
+            --notes "$NOTES" \
+            --prerelease
