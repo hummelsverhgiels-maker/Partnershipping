@@ -13,6 +13,7 @@ import 'earnings_page.dart';
 import 'important_page.dart';
 import 'mood_card.dart';
 import 'sheets.dart';
+import 'together_pages.dart';
 import 'theme.dart';
 
 /// Вкладка «Сегодня»: всё важное на сегодня и ближайшие дни.
@@ -183,6 +184,8 @@ class TodayPage extends StatelessWidget {
               ),
             ),
           ],
+          const SectionTitle('МЫ ВМЕСТЕ'),
+          TogetherCard(store: s),
           const SectionTitle('НАСТРОЕНИЕ'),
           MoodCard(store: s),
           const SectionTitle('СОБАКА'),

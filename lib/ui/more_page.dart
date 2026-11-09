@@ -4,7 +4,10 @@ import '../data/store.dart';
 import 'budget_page.dart';
 import 'common.dart';
 import 'docs_page.dart';
+import 'backup_page.dart';
 import 'dog_care.dart';
+import 'dog_extras.dart';
+import 'together_pages.dart';
 import 'dog_passport.dart';
 import 'dog_today.dart';
 import 'earnings_page.dart';
@@ -141,6 +144,43 @@ class MorePage extends StatelessWidget {
             'Кличка, порода, чип, ветеринар, аллергии',
             DogPassportPage(store: store),
           ),
+          item(
+            '🛌',
+            'Поза дня',
+            'Фото, как спит собака, и лучшая поза месяца',
+            DogPosesPage(store: store),
+          ),
+          item(
+            '🎬',
+            'Видео-альбом',
+            'Смешные и милые видео собаки',
+            DogVideosPage(store: store),
+          ),
+          item(
+            '📒',
+            'Заметки о собаке',
+            'Команды, любимое, чего боится',
+            DogNotesPage(store: store),
+          ),
+          const SectionTitle('ВМЕСТЕ'),
+          item(
+            '🫙',
+            'Банка благодарностей',
+            'За что вы благодарны друг другу',
+            GratitudePage(store: store),
+          ),
+          item(
+            '🎲',
+            'Идеи для свиданий',
+            'Подскажем, чем заняться вдвоём',
+            DateIdeasPage(store: store),
+          ),
+          item(
+            '🎁',
+            'Дни рождения',
+            'Друзья и родные, идеи подарков',
+            BirthdaysPage(store: store),
+          ),
           const SectionTitle('ПАРА И ДЕНЬГИ'),
           item(
             '💰',
@@ -165,6 +205,12 @@ class MorePage extends StatelessWidget {
             'Настройки',
             'Профиль, пара, шаблоны, выплаты, тема',
             SettingsPage(store: store),
+          ),
+          item(
+            '💾',
+            'Резервная копия',
+            'Сохранить все данные файлом и восстановить',
+            BackupPage(store: store),
           ),
         ],
       ),

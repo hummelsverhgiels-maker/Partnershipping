@@ -169,6 +169,7 @@ void main() {
         ); // заголовок: приветствие + имя
         expect(find.textContaining('Саша'), findsWidgets);
         expect(find.text('НАСТРОЕНИЕ'), findsOneWidget);
+        expect(find.byKey(const ValueKey('together-card')), findsOneWidget);
 
         // Настроение: «+» открывает выбор состояний, выбранное сохраняется
         await tester.dragUntilVisible(
@@ -358,6 +359,56 @@ void main() {
           scrollable: moreScroll(),
         );
         expect(find.text('Бублик сегодня'), findsOneWidget);
+
+        // Новые разделы: поза дня, видео, заметки, благодарности, идеи, дни рождения, копия
+        await moreItem('Поза дня');
+        expect(find.textContaining('Снимайте'), findsOneWidget);
+        await back();
+        await moreItem('Видео-альбом');
+        expect(find.textContaining('видео вашей собаки'), findsOneWidget);
+        await back();
+        await moreItem('Заметки о собаке');
+        store.upsert('dognote', {
+          'cat': 'cmd',
+          'title': 'Дай лапу',
+          'text': 'Учим',
+          'ts': 1,
+        });
+        await _settle(tester);
+        expect(find.text('Дай лапу'), findsOneWidget);
+        await back();
+        await moreItem('Банка благодарностей');
+        store.upsert('thanks', {
+          'title': 'ужин',
+          'by': store.session!.memberId,
+          'date': '2026-11-01',
+          'ts': 1,
+        });
+        await _settle(tester);
+        expect(find.text('Спасибо за ужин'), findsOneWidget);
+        await back();
+        await moreItem('Идеи для свиданий');
+        await tester.tap(find.byKey(const ValueKey('idea-roll')));
+        await _settle(tester);
+        await tester.tap(find.byKey(const ValueKey('idea-went')));
+        await _settle(tester);
+        expect(store.kindList('dateidea').where((r) => r.b('done')).length, 1);
+        expect(tester.takeException(), isNull);
+        await back();
+        await moreItem('Дни рождения');
+        store.upsert('person', {
+          'name': 'Мама',
+          'rel': 'мама',
+          'date': '1970-03-08',
+          'ts': 1,
+        });
+        await _settle(tester);
+        expect(find.textContaining('Мама'), findsOneWidget);
+        await back();
+        await moreItem('Резервная копия');
+        expect(find.text('Сохранить копию в файл'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await back();
 
         // Ещё и вложенные экраны
         for (final item in [

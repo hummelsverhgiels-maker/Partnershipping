@@ -505,6 +505,9 @@ class AppStore extends ChangeNotifier {
         return 'event';
       case 'dogdone':
         return 'dog';
+      case 'pose':
+      case 'dogvideo':
+        return 'feed';
     }
     return null;
   }
@@ -1095,6 +1098,79 @@ class AppStore extends ChangeNotifier {
     }
     if (best == null) return null;
     return '${best.s('emoji') ?? '🐶'} ${best.s('label') ?? 'Отметка'} — готово';
+  }
+
+  // ------------------------------------------ общие списки и резервная копия
+  /// Все записи одного вида (по времени создания: старые первыми).
+  List<Rec> kindList(String kind) {
+    final l = _recs.values.where((r) => r.kind == kind).toList();
+    l.sort((a, b) {
+      final c = (a.i('ts') ?? 0).compareTo(b.i('ts') ?? 0);
+      return c != 0 ? c : a.updatedAt.compareTo(b.updatedAt);
+    });
+    return l;
+  }
+
+  /// Дата начала отношений (общая для пары).
+  String? get togetherSince {
+    Rec? r;
+    for (final x in _recs.values) {
+      if (x.kind == 'pairinfo' && (r == null || x.id.compareTo(r.id) < 0)) {
+        r = x;
+      }
+    }
+    final d = r?.s('since');
+    return (d == null || d.isEmpty) ? null : d;
+  }
+
+  void setTogetherSince(String? ymdDate) {
+    Rec? r;
+    for (final x in _recs.values) {
+      if (x.kind == 'pairinfo' && (r == null || x.id.compareTo(r.id) < 0)) {
+        r = x;
+      }
+    }
+    upsert('pairinfo', {'since': ymdDate ?? ''}, id: r?.id);
+  }
+
+  /// Резервная копия: все записи пары одним текстом (JSON).
+  String exportBackup() => jsonEncode({
+    'app': 'vv-loving-planning',
+    'version': 1,
+    'exported': DateTime.now().toUtc().toIso8601String(),
+    'members': [for (final m in members) m.toJson()],
+    'records': [for (final r in _recs.values) r.toJson()],
+  });
+
+  /// Восстановить записи из резервной копии. Возвращает, сколько записей добавлено
+  /// или обновлено (более новые версии на телефоне не затираются).
+  int importBackup(String text) {
+    final j = jsonDecode(text);
+    if (j is! Map ||
+        j['app'] != 'vv-loving-planning' ||
+        j['records'] is! List) {
+      throw 'Это не файл резервной копии V&V';
+    }
+    var n = 0;
+    for (final e in j['records'] as List) {
+      try {
+        final r = Rec.fromJson(Map<String, dynamic>.from(e as Map));
+        final cur = _recs[r.id];
+        if (cur != null && !r.updatedAt.isAfter(cur.updatedAt)) continue;
+        final rec = Rec(
+          id: r.id,
+          kind: r.kind,
+          data: r.data,
+          updatedBy: session?.memberId,
+          updatedAt: DateTime.now(),
+        );
+        _recs[rec.id] = rec;
+        _outbox.add(_Op.upsert(rec));
+        n++;
+      } catch (_) {}
+    }
+    if (n > 0) _afterLocalChange();
+    return n;
   }
 
   // ----------------------------------------------- профиль и шаблоны
