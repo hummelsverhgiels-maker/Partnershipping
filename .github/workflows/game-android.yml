@@ -45,6 +45,17 @@ jobs:
           export/android/shutdown_adb_on_exit = true
           EOT
 
+      - name: Android SDK (build-tools и платформа)
+        run: |
+          SDK="${ANDROID_HOME:-/usr/lib/android-sdk}"
+          SM="$(find "$SDK" /usr/lib/android-sdk /opt -name sdkmanager -type f 2>/dev/null | head -1)"
+          echo "sdkmanager=$SM"
+          if [ -n "$SM" ]; then
+            yes | "$SM" --sdk_root="$SDK" --licenses >/dev/null || true
+            "$SM" --sdk_root="$SDK" "build-tools;34.0.0" "platforms;android-34" || true
+          fi
+          ls "$SDK/build-tools" "$SDK/platforms" || true
+
       - name: Импорт ресурсов
         working-directory: game
         run: godot --headless --import || true
@@ -53,7 +64,7 @@ jobs:
         working-directory: game
         run: |
           mkdir -p ../build
-          godot --headless --export-debug "Android" ../build/ashen-vale.apk
+          godot --headless --verbose --export-debug "Android" ../build/ashen-vale.apk
           ls -la ../build
 
       - uses: actions/upload-artifact@v4
