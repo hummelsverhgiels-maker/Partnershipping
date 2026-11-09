@@ -69,7 +69,6 @@ function categoryOf(kind: string): string | null {
     case "post": return "feed";
     case "doc": return "docs";
     case "kiss": return "kiss";
-    case "dogdone": return "dog";
   }
   return null;
 }
@@ -81,7 +80,6 @@ const CATEGORY_TEXT: Record<string, string> = {
   todo: "дела",
   feed: "ленту",
   docs: "документы",
-  dog: "собаку",
 };
 
 Deno.serve(async (req) => {
@@ -139,12 +137,6 @@ Deno.serve(async (req) => {
     } else if (cat === "kiss") {
       title = `${name} 💋`;
       text = "Прислал(а) тебе поцелуйчики";
-    } else if (cat === "dog") {
-      title = `${name} 🐶`;
-      text = `${String(row.data?.emoji ?? "🐾")} ${String(row.data?.label ?? "Отметка")} — готово`;
-    } else {
-      title = `${name} внёс(ла) изменения`;
-      text = `Обновлено: ${CATEGORY_TEXT[cat]}`;
     }
 
     const bearer = await accessToken();

@@ -5,7 +5,6 @@ import '../models.dart';
 import '../services/media_service.dart';
 import '../util.dart';
 import 'common.dart';
-import 'dog_today.dart' show dogEmojiBox;
 import 'extras_common.dart';
 import 'media_viewer.dart';
 import 'media_widgets.dart';
@@ -15,7 +14,7 @@ const _kRed = Color(0xFFD9534F);
 
 // ================================================================ поза дня
 
-/// «Поза дня»: фото, как спит собака, с оценкой «пузом кверху».
+/// «Поза дня»: фото, как спит Оливка, с оценкой «пузом кверху».
 class DogPosesPage extends StatefulWidget {
   final AppStore store;
   const DogPosesPage({super.key, required this.store});
@@ -241,7 +240,7 @@ class _DogPosesPageState extends State<DogPosesPage> {
           ),
           body: all.isEmpty
               ? const EmptyHint(
-                  'Снимайте, как спит ваша собака.\nВ конце месяца выберем лучшую позу 🏆',
+                  'Снимайте, как спит Оливка.\nВ конце месяца выберем лучшую позу 🏆',
                   icon: Icons.pets,
                 )
               : ListView(
@@ -420,7 +419,7 @@ class _DogVideosPageState extends State<DogVideosPage> {
           ),
           body: all.isEmpty
               ? const EmptyHint(
-                  'Здесь будут смешные и милые видео вашей собаки 🎬',
+                  'Здесь будут смешные и милые видео Оливки 🎬',
                   icon: Icons.movie_outlined,
                 )
               : ListView(
@@ -444,7 +443,19 @@ class _DogVideosPageState extends State<DogVideosPage> {
                         ),
                         child: Row(
                           children: [
-                            dogEmojiBox('🎬'),
+                            Container(
+                              width: 46,
+                              height: 46,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: kAccentSoft,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Text(
+                                '🎬',
+                                style: TextStyle(fontSize: 23),
+                              ),
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
@@ -631,7 +642,7 @@ class _DogNotesPageState extends State<DogNotesPage> {
             .where((r) => _cat == null || r.s('cat') == _cat)
             .toList();
         return Scaffold(
-          appBar: AppBar(title: const Text('Заметки о собаке')),
+          appBar: AppBar(title: const Text('Заметки об Оливке')),
           floatingActionButton: FloatingActionButton.extended(
             heroTag: null,
             onPressed: () => _edit(),
@@ -661,7 +672,7 @@ class _DogNotesPageState extends State<DogNotesPage> {
               const SizedBox(height: 10),
               if (all.isEmpty)
                 const EmptyHint(
-                  'Какие команды знает, что любит, чего боится — всё в одном месте 🐾',
+                  'Какие команды знает Оливка, что любит, чего боится — всё в одном месте 🐾',
                   icon: Icons.sticky_note_2_outlined,
                 ),
               for (final r in all) ...[

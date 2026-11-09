@@ -101,7 +101,7 @@ class _BackupPageState extends State<BackupPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Все ваши записи (график, списки, чат, лента, собака, бюджет…) — '
+                    'Все ваши записи (график, списки, чат, лента, Оливка, бюджет…) — '
                     'одним файлом. Фото и видео остаются на сервере, в копию попадают только '
                     'ссылки на них.',
                     style: TextStyle(color: kInkSoft, height: 1.35),

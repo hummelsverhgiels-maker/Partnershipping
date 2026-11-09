@@ -5,11 +5,8 @@ import 'budget_page.dart';
 import 'common.dart';
 import 'docs_page.dart';
 import 'backup_page.dart';
-import 'dog_care.dart';
 import 'dog_extras.dart';
 import 'together_pages.dart';
-import 'dog_passport.dart';
-import 'dog_today.dart';
 import 'earnings_page.dart';
 import 'important_page.dart';
 import 'kiss_page.dart';
@@ -88,10 +85,6 @@ class MorePage extends StatelessWidget {
       ),
     );
 
-    final today = DateTime.now();
-    final dogLeft = store.dogTodayItems
-        .where((i) => store.dogDoneOf(today, i.id) == null)
-        .length;
     return Scaffold(
       appBar: AppBar(title: const Text('Ещё')),
       body: ListView(
@@ -110,55 +103,22 @@ class MorePage extends StatelessWidget {
             'Файлы и ссылки, в том числе Google Диск',
             DocsPage(store: store),
           ),
-          SectionTitle('${store.dogEmoji} ${store.dogName.toUpperCase()}'),
-          item(
-            '🦮',
-            '${store.dogName} сегодня',
-            'Прогулки и кормёжка: кто и во сколько',
-            DogTodayPage(store: store),
-            badge: dogLeft,
-          ),
-          item(
-            '🗓️',
-            'Кто гуляет',
-            'План прогулок по сменам на неделю',
-            DogWalkPlanPage(store: store),
-          ),
-          item(
-            '💉',
-            'Здоровье',
-            'Прививки, клещи, глистогонка, вес',
-            DogHealthPage(store: store),
-            badge: store.dogCareDue().length,
-          ),
-          item(
-            '🥣',
-            'Запасы',
-            'Корм и всё нужное: когда закончится',
-            DogSuppliesPage(store: store),
-            badge: store.dogSuppliesLow().length,
-          ),
-          item(
-            '🐕',
-            'Паспорт собаки',
-            'Кличка, порода, чип, ветеринар, аллергии',
-            DogPassportPage(store: store),
-          ),
+          const SectionTitle('🐶 ОЛИВКА'),
           item(
             '🛌',
             'Поза дня',
-            'Фото, как спит собака, и лучшая поза месяца',
+            'Как спит Оливка, и лучшая поза месяца',
             DogPosesPage(store: store),
           ),
           item(
             '🎬',
             'Видео-альбом',
-            'Смешные и милые видео собаки',
+            'Смешные и милые видео Оливки',
             DogVideosPage(store: store),
           ),
           item(
             '📒',
-            'Заметки о собаке',
+            'Заметки об Оливке',
             'Команды, любимое, чего боится',
             DogNotesPage(store: store),
           ),

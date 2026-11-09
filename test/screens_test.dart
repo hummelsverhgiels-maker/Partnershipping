@@ -289,85 +289,17 @@ void main() {
             .maybePop();
         await _settle(tester);
 
-        // Собака (в «Ещё»): отметки, план выгула, здоровье, запасы, паспорт
         await tester.tap(nav('Ещё'));
         await _settle(tester);
-        final today = DateTime.now();
-        await tester.tap(find.text('Собака сегодня'));
-        await _settle(tester);
-        await tester.tap(find.byKey(const ValueKey('dog-item-walk_m')));
-        await _settle(tester);
-        expect(store.dogDoneOf(today, 'walk_m'), isNotNull);
-        expect(tester.takeException(), isNull);
-        await back();
-
-        await moreItem('Кто гуляет');
-        final slot = find.byKey(
-          ValueKey(
-            'slot-${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}-e',
-          ),
-        );
-        await tester.tap(slot);
-        await _settle(tester);
-        await tester.tap(find.text('Гуляю я'));
-        await _settle(tester);
-        expect(store.dogPlanOf(today, 'e'), store.session!.memberId);
-        expect(find.textContaining('договорились'), findsWidgets);
-        expect(tester.takeException(), isNull);
-        await back();
-
-        await moreItem('Здоровье');
-        await tester.tap(find.text('Добавить основные'));
-        await _settle(tester);
-        expect(store.dogCare.length, 4);
-        await tester.tap(find.text('Сделано').first);
-        await _settle(tester);
-        expect(store.dogCare.where((r) => r.s('last') != null).length, 1);
-        await tester.tap(find.text('Процедура'));
-        await _settle(tester);
-        expect(find.text('Новая процедура'), findsOneWidget);
-        expect(tester.takeException(), isNull);
-        await back(); // закрыть окно
-        expect(tester.takeException(), isNull);
-        await back();
-
-        await moreItem('Запасы');
-        await tester.tap(find.text('Добавить корм, лакомства, пакеты'));
-        await _settle(tester);
-        expect(store.dogSupplies.length, 4);
-        await tester.tap(find.text('В покупки').first);
-        await _settle(tester);
-        expect(
-          store.shopping
-              .where((r) => (r.s('title') ?? '').contains('корм'))
-              .length,
-          1,
-        );
-        expect(tester.takeException(), isNull);
-        await back();
-
-        await moreItem('Паспорт собаки');
-        await tester.enterText(find.byType(TextField).first, 'Бублик');
-        await tester.tap(find.text('Сохранить').first);
-        await _settle(tester);
-        expect(store.dogName, 'Бублик');
-        expect(tester.takeException(), isNull);
-        await back();
-        await tester.scrollUntilVisible(
-          find.text('Бублик сегодня'),
-          -200,
-          scrollable: moreScroll(),
-        );
-        expect(find.text('Бублик сегодня'), findsOneWidget);
 
         // Новые разделы: поза дня, видео, заметки, благодарности, идеи, дни рождения, копия
         await moreItem('Поза дня');
         expect(find.textContaining('Снимайте'), findsOneWidget);
         await back();
         await moreItem('Видео-альбом');
-        expect(find.textContaining('видео вашей собаки'), findsOneWidget);
+        expect(find.textContaining('видео Оливки'), findsOneWidget);
         await back();
-        await moreItem('Заметки о собаке');
+        await moreItem('Заметки об Оливке');
         store.upsert('dognote', {
           'cat': 'cmd',
           'title': 'Дай лапу',
@@ -421,23 +353,6 @@ void main() {
           expect(tester.takeException(), isNull, reason: item);
           await back();
         }
-        // карточка собаки на «Сегодня»
-        await tester.tap(nav('Сегодня'));
-        await _settle(tester);
-        await tester.dragUntilVisible(
-          find.byKey(const ValueKey('dog-today-card')),
-          find.byType(ListView).first,
-          const Offset(0, -150),
-        );
-        expect(find.text('Бублик сегодня'), findsWidgets);
-        await tester.tap(nav('Ещё'));
-        await _settle(tester);
-        await tester.scrollUntilVisible(
-          find.text('Настройки'),
-          200,
-          scrollable: moreScroll(),
-        );
-        await _settle(tester);
 
         // Аватарка: окно выбора открывается, картинка выбирается и видна в профиле
         store.setAvatar('emoji:🦊');

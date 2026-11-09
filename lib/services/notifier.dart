@@ -7,7 +7,6 @@ import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../data/store.dart';
-import '../logic/dog.dart';
 import '../util.dart';
 
 /// Локальные уведомления: напоминания о выплатах и сообщения об изменениях партнёра.
@@ -171,25 +170,8 @@ class Notifier {
     String who,
     Set<String> cats, {
     String? lastMessage,
-    String? dogLine,
   }) async {
     if (!_ready) return;
-    if (cats.length == 1 && cats.contains('dog') && dogLine != null) {
-      try {
-        await _plugin.show(
-          id: 4,
-          title: '$who 🐶',
-          body: dogLine,
-          notificationDetails: const NotificationDetails(
-            android: _dogChannel,
-            iOS: DarwinNotificationDetails(),
-          ),
-        );
-      } catch (e) {
-        debugPrint('Уведомление не показано: $e');
-      }
-      return;
-    }
     if (cats.length == 1 && cats.contains('chat') && lastMessage != null) {
       try {
         await _plugin.show(
@@ -214,7 +196,6 @@ class Notifier {
       if (cats.contains('todo')) 'дела',
       if (cats.contains('feed')) 'ленту',
       if (cats.contains('docs')) 'документы',
-      if (cats.contains('dog')) 'собаку',
     ];
     if (parts.isEmpty) return;
     try {
@@ -276,61 +257,6 @@ List<PlannedNote> planNotes(AppStore store, DateTime now) {
         ),
       );
     }
-  }
-  if (!store.getFlag('notif_dog')) return out;
-  final name = store.dogName;
-  // вечерняя прогулка: в 21:30, если ещё не отмечена (на неделю вперёд)
-  for (var i = 0; i < 7; i++) {
-    final d = addDays(today, i);
-    final when = DateTime(d.year, d.month, d.day, 21, 30);
-    if (!when.isAfter(now)) continue;
-    if (store.dogDoneOf(d, kDogWalkEvening.id) != null) continue;
-    out.add(
-      PlannedNote(
-        2000 + i,
-        when,
-        '${store.dogEmoji} $name ждёт прогулку',
-        'Вечерняя прогулка ещё не отмечена. Если уже гуляли — нажмите ✅ в приложении.',
-        dog: true,
-      ),
-    );
-  }
-  // прививки и обработки: в 10:00 в день срока
-  var cid = 3000;
-  for (final r in store.dogCare) {
-    if (cid >= 3100) break;
-    final next = careNext(r.s('last'), r.i('every') ?? 0);
-    if (next == null) continue;
-    final when = DateTime(next.year, next.month, next.day, 10);
-    if (!when.isAfter(now) || next.isAfter(addDays(today, 120))) continue;
-    out.add(
-      PlannedNote(
-        cid++,
-        when,
-        '${r.s('emoji') ?? '💉'} Пора: ${r.s('title') ?? 'процедура'}',
-        'Сегодня по плану для собаки ($name). Отметьте «Сделано» в «Здоровье».',
-        dog: true,
-      ),
-    );
-  }
-  // запасы: в 10:00, когда останется 2 дня
-  var sid = 4000;
-  for (final r in store.dogSupplies) {
-    if (sid >= 4100) break;
-    final b = r.s('bought');
-    if (b == null) continue;
-    final end = addDays(parseYmd(b), (r.i('lasts') ?? 30) - 2);
-    final when = DateTime(end.year, end.month, end.day, 10);
-    if (!when.isAfter(now) || end.isAfter(addDays(today, 120))) continue;
-    out.add(
-      PlannedNote(
-        sid++,
-        when,
-        '${r.s('emoji') ?? '🥣'} Скоро закончится: ${r.s('title') ?? 'запас'}',
-        'Хватит примерно на 2 дня. Добавьте в покупки 🛒',
-        dog: true,
-      ),
-    );
   }
   return out;
 }

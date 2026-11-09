@@ -78,7 +78,6 @@ class _PartnershippingAppState extends State<PartnershippingApp>
           who,
           cats,
           lastMessage: msgs.isEmpty ? null : msgs.last.s('text'),
-          dogLine: widget.store.lastPartnerDogLine,
         );
       }
     };

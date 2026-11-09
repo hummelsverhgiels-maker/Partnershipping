@@ -55,3 +55,10 @@ String compactTime(String start, String end) {
 
   return '${one(start)}–${one(end)}';
 }
+
+/// Сколько дней от [from] до [to] (без учёта времени и перехода на летнее время).
+int daysBetween(DateTime from, DateTime to) => DateTime.utc(
+  to.year,
+  to.month,
+  to.day,
+).difference(DateTime.utc(from.year, from.month, from.day)).inDays;

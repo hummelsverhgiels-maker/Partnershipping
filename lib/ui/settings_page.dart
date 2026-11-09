@@ -410,17 +410,6 @@ class SettingsPage extends StatelessWidget {
                     'Приходит, пока приложение открыто или недавно было открыто',
                   ),
                 ),
-                SwitchRow(
-                  value: store.getFlag('notif_dog'),
-                  onChanged: (v) async {
-                    await store.setFlag('notif_dog', v);
-                    if (v) await Notifier.requestPermission();
-                  },
-                  title: const Text('Напоминания о собаке'),
-                  subtitle: const Text(
-                    'Вечерняя прогулка в 21:30, прививки, корм заканчивается',
-                  ),
-                ),
               ],
             ),
           ),

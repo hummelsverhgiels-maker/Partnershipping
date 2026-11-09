@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../logic/dog.dart';
 import '../logic/schedule.dart';
 import '../models.dart';
 import '../util.dart';
@@ -72,14 +71,6 @@ class AppStore extends ChangeNotifier {
   Map<String, int> seenTs = {}; // memberId -> до какого сообщения прочитан чат
   Map<String, Rec> kisses = {}; // memberId -> счётчик поцелуев
   Map<String, Rec> avatars = {}; // memberId -> аватарка
-
-  // собака
-  Rec? dog; // паспорт собаки
-  Map<String, Map<String, Rec>> dogDone = {}; // дата -> пункт -> отметка
-  Map<String, Rec> dogPlans = {}; // «дата|окно» -> кто гуляет
-  List<Rec> dogCare = []; // прививки, обработки, груминг
-  List<Rec> dogWeights = []; // вес по датам
-  List<Rec> dogSupplies = []; // корм и прочие запасы
 
   bool get hasSession => session != null;
   bool get isLocal => session?.local ?? true;
@@ -503,8 +494,6 @@ class AppStore extends ChangeNotifier {
         return 'docs';
       case 'event':
         return 'event';
-      case 'dogdone':
-        return 'dog';
       case 'pose':
       case 'dogvideo':
         return 'feed';
@@ -906,200 +895,6 @@ class AppStore extends ChangeNotifier {
     flush();
   }
 
-  // ----------------------------------------------------------- собака
-  String get dogName {
-    final n = dog?.s('name')?.trim() ?? '';
-    return n.isEmpty ? 'Собака' : n;
-  }
-
-  String get dogEmoji {
-    final e = dog?.s('emoji') ?? '';
-    return e.isEmpty ? '🐶' : e;
-  }
-
-  int get dogWalks => (dog?.i('walks') ?? 2).clamp(2, 3);
-  int get dogMeals => (dog?.i('meals') ?? 2).clamp(1, 3);
-
-  /// Сколько часов собаке нормально побыть одной.
-  int get dogAloneMax => (dog?.i('aloneMax') ?? 8).clamp(2, 16);
-
-  /// Дорога до работы (минут в одну сторону).
-  int get dogCommute => (dog?.i('commute') ?? 30).clamp(0, 180);
-
-  List<DogItem> get dogTodayItems => dogItems(walks: dogWalks, meals: dogMeals);
-
-  void saveDog(Map<String, dynamic> data) {
-    upsert('dog', {...?dog?.data, ...data}, id: dog?.id);
-  }
-
-  Rec? dogDoneOf(DateTime day, String item) => dogDone[ymd(day)]?[item];
-
-  /// Отметить пункт (или снять отметку).
-  void toggleDogDone(String item, {DateTime? day}) {
-    final d = ymd(day ?? DateTime.now());
-    final same = _recs.values
-        .where(
-          (r) => r.kind == 'dogdone' && r.s('date') == d && r.s('item') == item,
-        )
-        .map((r) => r.id)
-        .toList();
-    if (same.isNotEmpty) {
-      for (final id in same) {
-        if (_recs.remove(id) != null) _outbox.add(_Op.delete(id));
-      }
-      _afterLocalChange();
-      return;
-    }
-    final it = dogItemById(item);
-    // старые отметки (старше 60 дней) убираем, чтобы данные не разрастались
-    final cutoff = ymd(addDays(DateTime.now(), -60));
-    final old = _recs.values
-        .where(
-          (r) =>
-              r.kind == 'dogdone' && (r.s('date') ?? '').compareTo(cutoff) < 0,
-        )
-        .take(40)
-        .map((r) => r.id)
-        .toList();
-    for (final id in old) {
-      if (_recs.remove(id) != null) _outbox.add(_Op.delete(id));
-    }
-    upsert('dogdone', {
-      'date': d,
-      'item': item,
-      'label': it?.title ?? item,
-      'emoji': it?.emoji ?? '🐶',
-      'by': session?.memberId,
-      'ts': DateTime.now().millisecondsSinceEpoch,
-    });
-  }
-
-  /// Дни, когда были отмечены все прогулки.
-  Set<String> get dogDaysAllWalked {
-    final walks = dogTodayItems.where((i) => i.walk).map((i) => i.id).toList();
-    return {
-      for (final e in dogDone.entries)
-        if (walks.every(e.value.containsKey)) e.key,
-    };
-  }
-
-  /// Сколько прогулок за последние 7 дней у каждого.
-  Map<String, int> dogWalksByMember({DateTime? today}) {
-    final t = dateOnly(today ?? DateTime.now());
-    final from = ymd(addDays(t, -6));
-    final to = ymd(t);
-    final out = <String, int>{};
-    for (final e in dogDone.entries) {
-      if (e.key.compareTo(from) < 0 || e.key.compareTo(to) > 0) continue;
-      for (final r in e.value.values) {
-        if (dogItemById(r.s('item') ?? '')?.walk != true) continue;
-        final by = r.s('by');
-        if (by != null) out[by] = (out[by] ?? 0) + 1;
-      }
-    }
-    return out;
-  }
-
-  /// Кто гуляет в это окно (если договорились заранее).
-  String? dogPlanOf(DateTime day, String slot) =>
-      dogPlans['${ymd(day)}|$slot']?.s('memberId');
-
-  void setDogPlan(DateTime day, String slot, String? memberId) {
-    final key = '${ymd(day)}|$slot';
-    final ex = dogPlans[key];
-    if (memberId == null) {
-      if (ex != null) remove(ex.id);
-      return;
-    }
-    upsert('dogplan', {
-      'date': ymd(day),
-      'slot': slot,
-      'memberId': memberId,
-    }, id: ex?.id);
-  }
-
-  void markCareDone(Rec r, {DateTime? on}) {
-    final d = ymd(on ?? DateTime.now());
-    final hist = <String>[
-      ...((r.data['history'] as List?) ?? const []).map((e) => '$e'),
-    ];
-    if (!hist.contains(d)) hist.add(d);
-    hist.sort();
-    final keep = hist.length > 12 ? hist.sublist(hist.length - 12) : hist;
-    upsert('dogcare', {
-      ...r.data,
-      'last': keep.last,
-      'history': keep,
-      'by': session?.memberId,
-    }, id: r.id);
-  }
-
-  void addDogWeight(double kg, DateTime day) {
-    final d = ymd(day);
-    Rec? ex;
-    for (final r in dogWeights) {
-      if (r.s('date') == d) ex = r;
-    }
-    upsert('dogweight', {'date': d, 'kg': kg}, id: ex?.id);
-  }
-
-  double? get dogWeightNow =>
-      dogWeights.isEmpty ? null : dogWeights.last.d('kg');
-
-  void markSupplyBought(Rec r, {DateTime? on}) {
-    upsert('dogsupply', {
-      ...r.data,
-      'bought': ymd(on ?? DateTime.now()),
-    }, id: r.id);
-  }
-
-  /// Положить запас в общий список покупок (если его там ещё нет).
-  bool supplyToShopping(Rec r) {
-    final title = '${r.s('emoji') ?? '🐶'} ${r.s('title') ?? 'Для собаки'}';
-    final exists = shopping.any(
-      (x) => !x.b('bought') && (x.s('title') ?? '').trim() == title.trim(),
-    );
-    if (exists) return false;
-    upsert('shopping', {'title': title, 'bought': false});
-    return true;
-  }
-
-  /// Запасы, которые скоро закончатся (осталось ≤ 3 дней).
-  List<Rec> dogSuppliesLow({DateTime? today}) {
-    final t = dateOnly(today ?? DateTime.now());
-    return [
-      for (final r in dogSupplies)
-        if (r.s('bought') != null &&
-            supplyLeft(r.s('bought')!, r.i('lasts') ?? 30, t) <= 3)
-          r,
-    ];
-  }
-
-  /// Процедуры, которые пора сделать (срок через ≤ 3 дня или прошёл).
-  List<Rec> dogCareDue({DateTime? today}) {
-    final t = dateOnly(today ?? DateTime.now());
-    return [
-      for (final r in dogCare)
-        if (careNext(r.s('last'), r.i('every') ?? 0) case final n?)
-          if (daysBetween(t, n) <= 3) r,
-    ];
-  }
-
-  /// Текст для уведомления о последней отметке партнёра.
-  String? get lastPartnerDogLine {
-    final p = partner;
-    if (p == null) return null;
-    Rec? best;
-    for (final byItem in dogDone.values) {
-      for (final r in byItem.values) {
-        if (r.s('by') != p.id) continue;
-        if (best == null || (r.i('ts') ?? 0) > (best.i('ts') ?? 0)) best = r;
-      }
-    }
-    if (best == null) return null;
-    return '${best.s('emoji') ?? '🐶'} ${best.s('label') ?? 'Отметка'} — готово';
-  }
-
   // ------------------------------------------ общие списки и резервная копия
   /// Все записи одного вида (по времени создания: старые первыми).
   List<Rec> kindList(String kind) {
@@ -1384,12 +1179,6 @@ class AppStore extends ChangeNotifier {
     final se = <String, int>{};
     final ki = <String, Rec>{};
     final av = <String, Rec>{};
-    Rec? dg;
-    final dd = <String, Map<String, Rec>>{};
-    final dp = <String, Rec>{};
-    final dcare = <Rec>[];
-    final dw = <Rec>[];
-    final ds = <Rec>[];
     for (final r in _recs.values) {
       switch (r.kind) {
         case 'shift':
@@ -1460,40 +1249,8 @@ class AppStore extends ChangeNotifier {
         case 'seen':
           final mid = r.s('memberId');
           if (mid != null) se[mid] = r.i('ts') ?? 0;
-        case 'dog':
-          // если паспорт вдруг создали оба сразу — берём один и тот же на обоих телефонах
-          if (dg == null || r.id.compareTo(dg.id) < 0) dg = r;
-        case 'dogdone':
-          final d = r.s('date');
-          final it = r.s('item');
-          if (d != null && it != null) {
-            final byItem = dd[d] ??= {};
-            final old = byItem[it];
-            if (old == null || (r.i('ts') ?? 0) < (old.i('ts') ?? 0)) {
-              byItem[it] = r;
-            }
-          }
-        case 'dogplan':
-          final d = r.s('date');
-          final sl = r.s('slot');
-          if (d != null && sl != null) dp['$d|$sl'] = r;
-        case 'dogcare':
-          dcare.add(r);
-        case 'dogweight':
-          if (r.s('date') != null && r.d('kg') != null) dw.add(r);
-        case 'dogsupply':
-          ds.add(r);
       }
     }
-    dcare.sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
-    dw.sort((a, b) => (a.s('date') ?? '').compareTo(b.s('date') ?? ''));
-    ds.sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
-    dog = dg;
-    dogDone = dd;
-    dogPlans = dp;
-    dogCare = dcare;
-    dogWeights = dw;
-    dogSupplies = ds;
     // Если смена и «выходной» вдруг оба есть (две правки одновременно) — побеждает смена.
     schedule = Schedule(
       shifts: shifts,
