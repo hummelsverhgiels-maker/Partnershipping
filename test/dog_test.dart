@@ -53,4 +53,32 @@ void main() {
     expect(b.importBackup(text), 0); // повторно ничего нового
     expect(() => b.importBackup('{"app":"x"}'), throwsA(isA<String>()));
   });
+
+  test('календарь: дни рождения и годовщины видны на своих днях', () async {
+    SharedPreferences.setMockInitialValues({});
+    final s = AppStore();
+    await s.init();
+    await s.startLocal('Саша', 0xFFFBC9A0);
+    s.upsert('person', {'name': 'Мама', 'date': '1970-03-08', 'ts': 1});
+    s.upsert('important', {
+      'title': 'Отпуск',
+      'date': '2026-07-01',
+      'yearly': true,
+      'emoji': '✈️',
+    });
+    s.setTogetherSince('2025-08-20');
+    final b = s.importantOn(DateTime(2027, 3, 8)).single;
+    expect(b.s('title'), 'День рождения: Мама (57)');
+    expect(b.s('emoji'), '🎂');
+    expect(
+      s.importantOn(DateTime(2026, 8, 20)).single.s('title'),
+      '1 год вместе!',
+    );
+    expect(
+      s.importantOn(DateTime(2025, 11, 28)).single.s('title'),
+      '100 дней вместе!',
+    );
+    expect(s.importantOn(DateTime(2027, 7, 1)).single.s('emoji'), '✈️');
+    expect(s.importantOn(DateTime(2027, 7, 2)), isEmpty);
+  });
 }

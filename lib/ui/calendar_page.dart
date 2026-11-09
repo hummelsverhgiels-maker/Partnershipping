@@ -512,7 +512,8 @@ class _CalendarPageState extends State<CalendarPage> {
     final weekend = d.weekday >= 6;
     final common =
         ms.length == 2 && s.schedule.isCommonOff(ms[0].id, ms[1].id, d);
-    final hasImportant = s.importantOn(d).isNotEmpty;
+    final importantHere = s.importantOn(d);
+    final hasImportant = importantHere.isNotEmpty;
 
     void onTap() {
       if (_selected.isNotEmpty) {
@@ -616,12 +617,9 @@ class _CalendarPageState extends State<CalendarPage> {
                               ),
                             ),
                           if (hasImportant)
-                            const Text(
-                              '★',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Color(0xFFE0A030),
-                              ),
+                            Text(
+                              importantHere.first.s('emoji') ?? '★',
+                              style: const TextStyle(fontSize: 11),
                             ),
                           if (hasEvent)
                             const Text(

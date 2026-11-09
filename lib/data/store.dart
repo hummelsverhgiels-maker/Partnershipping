@@ -1152,8 +1152,57 @@ class AppStore extends ChangeNotifier {
         out.add(r);
       }
     }
+    // Дни рождения родных и друзей (раздел «Дни рождения»)
+    for (final r in kindList('person')) {
+      final ds = r.s('date');
+      if (ds == null) continue;
+      final o = parseYmd(ds);
+      final dim = daysInMonth(d.year, o.month);
+      final day = o.day > dim ? dim : o.day;
+      if (d.month == o.month && d.day == day) {
+        final age = d.year - o.year;
+        out.add(
+          _note(
+            'person-${r.id}',
+            '🎂',
+            'День рождения: ${r.s('name') ?? ''}${age > 0 ? ' ($age)' : ''}',
+            d,
+          ),
+        );
+      }
+    }
+    // «Мы вместе»: годовщины и каждые 100 дней
+    final since = togetherSince;
+    if (since != null) {
+      final o = parseYmd(since);
+      final n = daysBetween(o, d);
+      if (n > 0) {
+        final dim = daysInMonth(d.year, o.month);
+        final day = o.day > dim ? dim : o.day;
+        if (d.month == o.month && d.day == day) {
+          final y = d.year - o.year;
+          out.add(
+            _note(
+              'together-$y',
+              '💞',
+              '$y ${plural(y, 'год', 'года', 'лет')} вместе!',
+              d,
+            ),
+          );
+        } else if (n % 100 == 0) {
+          out.add(_note('together-d$n', '💞', '$n дней вместе!', d));
+        }
+      }
+    }
     return out;
   }
+
+  Rec _note(String id, String emoji, String title, DateTime d) => Rec(
+    id: id,
+    kind: 'note',
+    data: {'emoji': emoji, 'title': title, 'date': ymd(d)},
+    updatedAt: d,
+  );
 
   // -------------------------------------------------- производные
   void _rebuild() {
