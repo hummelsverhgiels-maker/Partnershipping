@@ -25,7 +25,13 @@ jobs:
       - name: Подготовка Godot и подписи
         run: |
           mkdir -p ~/.local/share/godot/export_templates ~/.config/godot
-          mv /root/.local/share/godot/export_templates/4.3.stable ~/.local/share/godot/export_templates/4.3.stable
+          echo "HOME=$HOME"
+          ls -la /root/.local/share/godot/export_templates/ || true
+          ls /root/.local/share/godot/export_templates/* | head -50 || true
+          rm -rf ~/.local/share/godot/export_templates/4.3.stable
+          cp -r /root/.local/share/godot/export_templates/4.3.stable ~/.local/share/godot/export_templates/4.3.stable
+          echo "--- templates in HOME:"
+          ls ~/.local/share/godot/export_templates/4.3.stable | grep -i android || true
           keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android \
             -keystore "$PWD/debug.keystore" -storepass android \
             -dname "CN=Android Debug,O=Android,C=US" -validity 9999 -deststoretype pkcs12
