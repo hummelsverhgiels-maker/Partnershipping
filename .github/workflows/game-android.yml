@@ -1,0 +1,79 @@
+name: Игра Ashen Vale (Android APK)
+
+on:
+  push:
+    paths:
+      - "game/**"
+      - ".github/workflows/game-android.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: game-android-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Подготовка Godot и подписи
+        run: |
+          mkdir -p ~/.local/share/godot/export_templates ~/.config/godot
+          mv /root/.local/share/godot/export_templates/4.3.stable ~/.local/share/godot/export_templates/4.3.stable
+          keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android \
+            -keystore "$PWD/debug.keystore" -storepass android \
+            -dname "CN=Android Debug,O=Android,C=US" -validity 9999 -deststoretype pkcs12
+          SDK="${ANDROID_HOME:-/usr/lib/android-sdk}"
+          cat > ~/.config/godot/editor_settings-4.tres <<EOT
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "$SDK"
+          export/android/debug_keystore = "$PWD/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          export/android/shutdown_adb_on_exit = true
+          EOT
+
+      - name: Импорт ресурсов
+        working-directory: game
+        run: godot --headless --import || true
+
+      - name: Сборка APK
+        working-directory: game
+        run: |
+          mkdir -p ../build
+          godot --headless --export-debug "Android" ../build/ashen-vale.apk
+          ls -la ../build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ashen-vale-apk
+          path: build/ashen-vale.apk
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ashen-vale-apk
+      - name: Обновить ссылку для скачивания
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view game-latest >/dev/null 2>&1; then
+            gh release delete game-latest --cleanup-tag --yes
+          fi
+          gh release create game-latest ashen-vale.apk \
+            --target "$GITHUB_SHA" \
+            --title "Ashen Vale: последняя сборка" \
+            --notes "Коммит ${GITHUB_SHA::7}" \
+            --prerelease
