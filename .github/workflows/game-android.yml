@@ -30,11 +30,15 @@ jobs:
             -keystore "$PWD/debug.keystore" -storepass android \
             -dname "CN=Android Debug,O=Android,C=US" -validity 9999 -deststoretype pkcs12
           SDK="${ANDROID_HOME:-/usr/lib/android-sdk}"
+          JAVA_DIR="${JAVA_HOME:-$(dirname "$(dirname "$(readlink -f "$(which javac)")")")}"
+          echo "SDK=$SDK JAVA=$JAVA_DIR"
+          ls "$SDK" "$SDK/build-tools" || true
           cat > ~/.config/godot/editor_settings-4.tres <<EOT
           [gd_resource type="EditorSettings" format=3]
 
           [resource]
           export/android/android_sdk_path = "$SDK"
+          export/android/java_sdk_path = "$JAVA_DIR"
           export/android/debug_keystore = "$PWD/debug.keystore"
           export/android/debug_keystore_user = "androiddebugkey"
           export/android/debug_keystore_pass = "android"
