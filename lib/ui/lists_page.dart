@@ -6,7 +6,7 @@ import 'theme.dart';
 import 'todos_page.dart';
 import 'wishes_view.dart';
 
-/// Вкладка «Списки»: покупки, дела и идеи «сходить вместе».
+/// Вкладка «Списки»: дела (первыми), покупки и идеи «сходить вместе».
 class ListsPage extends StatefulWidget {
   final AppStore store;
   const ListsPage({super.key, required this.store});
@@ -24,18 +24,18 @@ class _ListsPageState extends State<ListsPage> {
     final Widget body;
     switch (_seg) {
       case 1:
-        body = TodosPage(
-          store: s,
-          embedded: true,
-          key: const ValueKey('todos'),
-        );
-      case 2:
-        body = WishesView(store: s, key: const ValueKey('wishes'));
-      default:
         body = ShoppingPage(
           store: s,
           embedded: true,
           key: const ValueKey('shop'),
+        );
+      case 2:
+        body = WishesView(store: s, key: const ValueKey('wishes'));
+      default:
+        body = TodosPage(
+          store: s,
+          embedded: true,
+          key: const ValueKey('todos'),
         );
     }
     return Scaffold(
@@ -55,8 +55,8 @@ class _ListsPageState extends State<ListsPage> {
                   selectedForegroundColor: kInk,
                 ),
                 segments: const [
-                  ButtonSegment(value: 0, label: Text('Покупки')),
-                  ButtonSegment(value: 1, label: Text('Дела')),
+                  ButtonSegment(value: 0, label: Text('Дела')),
+                  ButtonSegment(value: 1, label: Text('Покупки')),
                   ButtonSegment(value: 2, label: Text('Вместе')),
                 ],
                 selected: {_seg},

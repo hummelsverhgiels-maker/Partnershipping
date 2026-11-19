@@ -29,6 +29,13 @@ class TodayPage extends StatelessWidget {
     return 'Добрый вечер';
   }
 
+  String _newYearText(DateTime today) {
+    final ny = DateTime(today.year + 1, 1, 1);
+    final n = daysUntil(ny, today);
+    if (today.month == 1 && today.day <= 7) return 'С Новым годом! 🥂';
+    return 'До Нового года: $n ${plural(n, 'день', 'дня', 'дней')}';
+  }
+
   void _openDay(BuildContext context, DateTime d) {
     Navigator.push(
       context,
@@ -180,6 +187,27 @@ class TodayPage extends StatelessWidget {
               child: Text(
                 'График пока пуст. Откройте «Календарь» и нажмите ✨, чтобы заполнить его по шаблону (2/2, 3/3 и т. д.).',
                 style: TextStyle(color: kInk, height: 1.35),
+              ),
+            ),
+          ],
+          if (kNewYear) ...[
+            const SectionTitle('🎄 НОВЫЙ ГОД'),
+            SoftCard(
+              color: kAccentSoft,
+              child: Row(
+                children: [
+                  const Text('🎅', style: TextStyle(fontSize: 30)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _newYearText(today),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:partnershipping/logic/important.dart';
 import 'package:partnershipping/ui/kiss_page.dart';
+import 'package:partnershipping/logic/mood.dart';
 import 'package:partnershipping/logic/pattern.dart';
 import 'package:partnershipping/logic/schedule.dart';
 import 'package:partnershipping/logic/stats.dart';
@@ -161,5 +162,19 @@ void main() {
       sch.isCommonOff('a', 'b', DateTime(2026, 12, 4)),
       false,
     ); // нет данных
+  });
+
+  test('настроение: десять ступеней и свои состояния', () {
+    expect(moodStep(0), 0);
+    expect(moodStep(55), 5);
+    expect(moodStep(100), 9);
+    expect({for (var v = 0; v <= 100; v += 10) moodEmoji(v)}.length, 10);
+    expect(kMoodTags.length, greaterThan(50));
+    expect({for (final t in kMoodTags) t.id}.length, kMoodTags.length);
+    expect(parseCustomMood('🍕 Хочу пиццу'), ('🍕', 'Хочу пиццу'));
+    expect(parseCustomMood('Просто текст'), ('✨', 'Просто текст'));
+    final id = customMoodId('🍕', 'Хочу пиццу');
+    expect(moodTagById(id)!.label, 'Хочу пиццу');
+    expect(moodTagById(id)!.emoji, '🍕');
   });
 }

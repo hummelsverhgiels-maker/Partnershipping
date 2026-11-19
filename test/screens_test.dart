@@ -9,6 +9,8 @@ import 'package:partnershipping/logic/pattern.dart';
 import 'package:partnershipping/main.dart';
 import 'package:partnershipping/ui/feed_page.dart';
 import 'package:partnershipping/ui/more_page.dart';
+import 'package:partnershipping/ui/common.dart' show SoftSwitch;
+import 'package:partnershipping/ui/kiss_skin.dart';
 import 'package:partnershipping/ui/theme_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -180,13 +182,45 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('mood-plus')));
         await _settle(tester);
         expect(find.text('Что со мной сейчас?'), findsOneWidget);
-        await tester.tap(find.byKey(const ValueKey('mood-tag-hungry')));
+        for (final id in ['happy', 'hungry', 'tired']) {
+          await tester.dragUntilVisible(
+            find.byKey(ValueKey('mood-tag-$id')),
+            find.byType(SingleChildScrollView).last,
+            const Offset(0, -120),
+          );
+          await tester.tap(find.byKey(ValueKey('mood-tag-$id')));
+          await _settle(tester);
+        }
+        expect(store.moodTagsOf(store.session!.memberId), [
+          'happy',
+          'hungry',
+          'tired',
+        ]);
+        // без ограничения по числу и со своим состоянием
+        for (final id in ['sad', 'hug', 'coffee']) {
+          await tester.dragUntilVisible(
+            find.byKey(ValueKey('mood-tag-$id')),
+            find.byType(SingleChildScrollView).last,
+            const Offset(0, -120),
+          );
+          await tester.tap(find.byKey(ValueKey('mood-tag-$id')));
+          await _settle(tester);
+        }
+        expect(store.moodTagsOf(store.session!.memberId).length, 6);
+        await tester.enterText(
+          find.byKey(const ValueKey('mood-own')),
+          '🍕 Хочу пиццу',
+        );
+        await tester.testTextInput.receiveAction(TextInputAction.done);
         await _settle(tester);
-        await tester.tap(find.byKey(const ValueKey('mood-tag-tired')));
-        await _settle(tester);
-        expect(store.moodTagsOf(store.session!.memberId), ['hungry', 'tired']);
+        expect(
+          store.moodTagsOf(store.session!.memberId).last,
+          'c:🍕|Хочу пиццу',
+        );
         expect(tester.takeException(), isNull);
-        await tester.tapAt(const Offset(200, 60)); // закрыть окно
+        await tester
+            .state<NavigatorState>(find.byType(Navigator).first)
+            .maybePop(); // закрыть окно
         await _settle(tester);
 
         // Календарь + окно «График по шаблону» + выбор месяца и года
@@ -213,10 +247,11 @@ void main() {
         // Списки
         await tester.tap(nav('Списки'));
         await _settle(tester);
-        expect(find.text('Молоко'), findsOneWidget);
-        await tester.tap(find.text('Дела'));
-        await _settle(tester);
+        // «Дела» открываются первыми
         expect(find.text('Убраться'), findsWidgets);
+        await tester.tap(find.text('Покупки'));
+        await _settle(tester);
+        expect(find.text('Молоко'), findsOneWidget);
         await tester.tap(find.text('Вместе'));
         await _settle(tester);
         expect(find.text('Кино'), findsOneWidget);
@@ -252,6 +287,16 @@ void main() {
         ); // пачка уходит через секунду
         expect(store.kissTotalOf(store.session!.memberId), kissesBefore + 3);
         await tester.pump(const Duration(seconds: 3)); // частицы улетели
+        await tester.tap(find.byKey(const ValueKey('kiss-skin')));
+        await _settle(tester);
+        for (final k in kKissSkins) {
+          await tester.tap(find.byKey(ValueKey('skin-${k.id}')));
+          await _settle(tester);
+          expect(kissSkinController.skin.id, k.id);
+        }
+        await tester.tapAt(const Offset(200, 60)); // закрыть окно
+        await _settle(tester);
+        kissSkinController.set('kiss');
         expect(tester.takeException(), isNull);
         await tester
             .state<NavigatorState>(find.byType(Navigator).first)
@@ -372,14 +417,30 @@ void main() {
         await _settle(tester);
         await tester.tapAt(const Offset(200, 60)); // закрыть окно профиля
         await _settle(tester);
-        await tester
-            .state<NavigatorState>(find.byType(Navigator).first)
-            .maybePop();
+
+        // Новогодняя тема и дизайн тапалки
+        await tester.ensureVisible(find.byKey(const ValueKey('ny-switch')));
         await _settle(tester);
+        await tester.tap(
+          find.descendant(
+            of: find.byKey(const ValueKey('ny-switch')),
+            matching: find.byType(SoftSwitch),
+          ),
+        );
+        await _settle(tester);
+        expect(themeController.newYear, true);
+        expect(kissSkinController.skin.id, 'ginger');
+        expect(tester.takeException(), isNull);
+        // экран перестраивается целиком, как и при смене светлой/тёмной темы
+        await tester.pump(const Duration(seconds: 1));
+        themeController.setNewYear(false);
+        await _settle(tester);
+        expect(themeController.newYear, false);
 
         // Смена темы из настроек не ломает приложение
-        await tester.tap(find.text('Настройки'));
+        await tester.tap(nav('Ещё'));
         await _settle(tester);
+        await moreItem('Настройки');
         await tester.tap(find.text(dark ? 'Светлая' : 'Тёмная'));
         await _settle(tester);
         expect(tester.takeException(), isNull);

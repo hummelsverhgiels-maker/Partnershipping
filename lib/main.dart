@@ -13,6 +13,8 @@ import 'services/push_service.dart';
 import 'services/widget_service.dart';
 import 'ui/home_shell.dart';
 import 'ui/onboarding.dart';
+import 'ui/kiss_skin.dart';
+import 'ui/snow.dart';
 import 'ui/theme.dart';
 import 'ui/theme_controller.dart';
 
@@ -31,6 +33,7 @@ Future<void> main() async {
   }
   await themeController.load();
   await Transfer.load();
+  await kissSkinController.load();
   final store = AppStore();
   await store.init();
   // Firebase грузится в фоне: если серверы Google недоступны, приложение всё равно запустится.
@@ -128,7 +131,7 @@ class _PartnershippingAppState extends State<PartnershippingApp>
 
   Widget _buildApp(BuildContext context) {
     return MaterialApp(
-      key: ValueKey(themeController.isDark),
+      key: ValueKey('${themeController.isDark}-${themeController.newYear}'),
       title: 'V&V loving planning',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
@@ -146,7 +149,12 @@ class _PartnershippingAppState extends State<PartnershippingApp>
               stops: [0, 0.35, 1],
             ),
           ),
-          child: child,
+          child: themeController.newYear
+              ? Stack(
+                  fit: StackFit.expand,
+                  children: [?child, const SnowOverlay()],
+                )
+              : child,
         );
         if (!kIsWeb) return bg;
         // В браузере на большом экране держим приложение «телефонной» ширины.

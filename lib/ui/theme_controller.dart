@@ -10,6 +10,10 @@ class ThemeController extends ChangeNotifier with WidgetsBindingObserver {
   String _mode = 'system'; // system | light | dark
   SharedPreferences? _prefs;
   bool _observing = false;
+  bool _newYear = false;
+
+  /// Новогодняя тема (поверх светлой или тёмной).
+  bool get newYear => _newYear;
 
   String get mode => _mode;
 
@@ -23,8 +27,9 @@ class ThemeController extends ChangeNotifier with WidgetsBindingObserver {
       _prefs = await SharedPreferences.getInstance();
       final m = _prefs!.getString('theme_mode');
       if (m == 'light' || m == 'dark' || m == 'system') _mode = m!;
+      _newYear = _prefs!.getBool('theme_newyear') ?? false;
     } catch (_) {}
-    applyPalette(isDark);
+    applyPalette(isDark, newYear: _newYear);
     if (!_observing) {
       WidgetsBinding.instance.addObserver(this);
       _observing = true;
@@ -35,14 +40,22 @@ class ThemeController extends ChangeNotifier with WidgetsBindingObserver {
     if (m == _mode) return;
     _mode = m;
     _prefs?.setString('theme_mode', m);
-    applyPalette(isDark);
+    applyPalette(isDark, newYear: _newYear);
+    notifyListeners();
+  }
+
+  void setNewYear(bool v) {
+    if (v == _newYear) return;
+    _newYear = v;
+    _prefs?.setBool('theme_newyear', v);
+    applyPalette(isDark, newYear: _newYear);
     notifyListeners();
   }
 
   @override
   void didChangePlatformBrightness() {
     if (_mode == 'system') {
-      applyPalette(isDark);
+      applyPalette(isDark, newYear: _newYear);
       notifyListeners();
     }
   }

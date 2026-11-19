@@ -8,9 +8,8 @@ import 'package:flutter/services.dart';
 import '../data/store.dart';
 import 'avatar.dart';
 import 'common.dart';
+import 'kiss_skin.dart';
 import 'theme.dart';
-
-const _tapEmojis = ['💋', '😘', '💕', '❤️', '💖', '😚'];
 
 /// Подпись под кнопкой: меняется на каждом круглом числе (10, 25, 50, 100, 200 … 1000 и дальше).
 ({int key, String text}) kissCheer(int n) {
@@ -129,7 +128,9 @@ class _KissPageState extends State<KissPage>
     _ensureTicker();
     _ps.add(
       _Particle(
-        _tapEmojis[_rnd.nextInt(_tapEmojis.length)],
+        kissSkinController.skin.particles[_rnd.nextInt(
+          kissSkinController.skin.particles.length,
+        )],
         (_rnd.nextDouble() - 0.5) * (incoming ? 280 : 120),
         incoming ? 26 + _rnd.nextDouble() * 14 : 24 + _rnd.nextDouble() * 12,
         _now + (incoming ? _rnd.nextInt(700) : 0),
@@ -186,7 +187,17 @@ class _KissPageState extends State<KissPage>
     final now = _now;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Поцелуи')),
+      appBar: AppBar(
+        title: const Text('Поцелуи'),
+        actions: [
+          IconButton(
+            key: const ValueKey('kiss-skin'),
+            tooltip: 'Дизайн кнопки',
+            icon: const Icon(Icons.palette_outlined),
+            onPressed: () => showKissSkinSheet(context),
+          ),
+        ],
+      ),
       body: LayoutBuilder(
         builder: (context, c) {
           final cx = c.maxWidth / 2;
@@ -235,23 +246,34 @@ class _KissPageState extends State<KissPage>
                       scale: 0.86,
                       haptic: false,
                       onTap: _tap,
-                      child: Container(
-                        width: 190,
-                        height: 190,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [Color(0xFFFF9FB5), Color(0xFFF2849E)],
-                          ),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.7),
-                            width: 4,
-                          ),
-                        ),
-                        child: const Text('💋', style: TextStyle(fontSize: 86)),
+                      child: ListenableBuilder(
+                        listenable: kissSkinController,
+                        builder: (context, _) {
+                          final skin = kissSkinController.skin;
+                          return Container(
+                            width: 190,
+                            height: 190,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: skin.colors,
+                              ),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.7),
+                                width: 4,
+                              ),
+                            ),
+                            child: skin.gingerbread
+                                ? const GingerbreadMan(size: 130)
+                                : Text(
+                                    skin.glyph,
+                                    style: const TextStyle(fontSize: 86),
+                                  ),
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(height: 22),
@@ -362,4 +384,87 @@ class _KissPageState extends State<KissPage>
       ),
     );
   }
+}
+
+/// Окно выбора дизайна тапалки.
+Future<void> showKissSkinSheet(BuildContext context) {
+  return showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (ctx) => SafeArea(
+      child: ListenableBuilder(
+        listenable: kissSkinController,
+        builder: (ctx, _) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Дизайн тапалки',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  for (final k in kKissSkins)
+                    PressScale(
+                      key: ValueKey('skin-${k.id}'),
+                      scale: 0.93,
+                      onTap: () => kissSkinController.set(k.id),
+                      child: Container(
+                        width: 96,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: kissSkinController.skin.id == k.id
+                              ? kAccentSoft
+                              : kField,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: kissSkinController.skin.id == k.id
+                                ? kAccentDeep
+                                : kBorder,
+                            width: kissSkinController.skin.id == k.id ? 2 : 1,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 58,
+                              height: 58,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(colors: k.colors),
+                              ),
+                              child: k.gingerbread
+                                  ? const GingerbreadMan(size: 42)
+                                  : Text(
+                                      k.glyph,
+                                      style: const TextStyle(fontSize: 28),
+                                    ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              k.name,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }

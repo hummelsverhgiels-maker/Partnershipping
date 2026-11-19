@@ -13,6 +13,7 @@ import 'avatar_picker.dart';
 import 'theme_controller.dart';
 import '../util.dart';
 import 'common.dart';
+import 'kiss_skin.dart';
 import 'net_check_page.dart';
 import 'theme.dart';
 
@@ -124,6 +125,25 @@ class SettingsPage extends StatelessWidget {
                       ),
                     ),
                 ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SoftCard(
+            child: ListenableBuilder(
+              listenable: themeController,
+              builder: (context, _) => SwitchRow(
+                key: const ValueKey('ny-switch'),
+                value: themeController.newYear,
+                onChanged: (v) {
+                  themeController.setNewYear(v);
+                  // на Новый год тапалка превращается в имбирного пряника
+                  if (v) kissSkinController.set('ginger');
+                },
+                title: const Text('🎄 Новогодняя тема'),
+                subtitle: const Text(
+                  'Снег, ёлочные цвета и тапалка-пряник (дизайн можно сменить в «Поцелуях»)',
+                ),
               ),
             ),
           ),

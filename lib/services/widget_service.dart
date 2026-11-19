@@ -81,6 +81,7 @@ class WidgetService {
           .moodTagsOf(id)
           .map((t) => moodTagById(t)?.emoji ?? '')
           .where((e) => e.isNotEmpty)
+          .take(5)
           .join();
       return '${v == null ? '' : moodEmoji(v)}$tags';
     }

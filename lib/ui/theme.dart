@@ -3,12 +3,12 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 // Цвета, которые не меняются между светлой и тёмной темой.
-const kAccent = Color(0xFFF2A88F);
-const kAccentDeep = Color(0xFFE58E70);
 const kOnPastel = Color(0xFF4A3F3A); // текст на пастельных плашках участников
 
 class _Palette {
-  final Color bg,
+  final Color accent,
+      accentDeep,
+      bg,
       bgTop,
       surface,
       ink,
@@ -28,6 +28,8 @@ class _Palette {
       placeholder,
       common;
   const _Palette({
+    required this.accent,
+    required this.accentDeep,
     required this.bg,
     required this.bgTop,
     required this.surface,
@@ -51,6 +53,8 @@ class _Palette {
 }
 
 const _light = _Palette(
+  accent: Color(0xFFF2A88F),
+  accentDeep: Color(0xFFE58E70),
   bg: Color(0xFFFFF8F3),
   bgTop: Color(0xFFFFEFE4),
   surface: Colors.white,
@@ -73,6 +77,8 @@ const _light = _Palette(
 );
 
 const _dark = _Palette(
+  accent: Color(0xFFF2A88F),
+  accentDeep: Color(0xFFE58E70),
   bg: Color(0xFF1B1614),
   bgTop: Color(0xFF261C19),
   surface: Color(0xFF28211E),
@@ -94,8 +100,60 @@ const _dark = _Palette(
   common: Color(0xFF45283A),
 );
 
+// Новогодняя тема: морозный фон, клюквенный и хвойный цвета.
+const _nyLight = _Palette(
+  accent: Color(0xFFE8737A),
+  accentDeep: Color(0xFFC9363F),
+  bg: Color(0xFFF5FAF7),
+  bgTop: Color(0xFFE3F2EA),
+  surface: Colors.white,
+  ink: Color(0xFF33423A),
+  inkSoft: Color(0xFF74857C),
+  line: Color(0xFFDDEBE3),
+  accentSoft: Color(0xFFFBE1E1),
+  switchOff: Color(0xFFD5E2DA),
+  field: Color(0xFFF1F8F4),
+  border: Color(0xFFD3E4DA),
+  cardBorder: Color(0xFFE2EEE7),
+  warnBg: Color(0xFFFFF1D6),
+  errBg: Color(0xFFFFE3E0),
+  hero1: Color(0xFFFAD6D6),
+  hero2: Color(0xFFCFE9DA),
+  outMonth: Color(0xFFFBFEFC),
+  faint: Color(0xFFBFD0C6),
+  placeholder: Color(0xFFE6F0EA),
+  common: Color(0xFFDDF1E5),
+);
+
+const _nyDark = _Palette(
+  accent: Color(0xFFE8737A),
+  accentDeep: Color(0xFFD9484F),
+  bg: Color(0xFF101A16),
+  bgTop: Color(0xFF173025),
+  surface: Color(0xFF1A2822),
+  ink: Color(0xFFEAF4EE),
+  inkSoft: Color(0xFF9DB3A8),
+  line: Color(0xFF2B3D35),
+  accentSoft: Color(0xFF4A2429),
+  switchOff: Color(0xFF3B4D45),
+  field: Color(0xFF22332B),
+  border: Color(0xFF38503F),
+  cardBorder: Color(0xFF263A31),
+  warnBg: Color(0xFF4A3B22),
+  errBg: Color(0xFF4F2D2B),
+  hero1: Color(0xFF4A2429),
+  hero2: Color(0xFF1F4A38),
+  outMonth: Color(0xFF15221C),
+  faint: Color(0xFF4D6358),
+  placeholder: Color(0xFF2B3D35),
+  common: Color(0xFF1F4A38),
+);
+
 // Текущие цвета. Меняются при смене темы (см. applyPalette).
 bool kDark = false;
+bool kNewYear = false;
+Color kAccent = _light.accent;
+Color kAccentDeep = _light.accentDeep;
 Color kBg = _light.bg;
 Color kBgTop = _light.bgTop;
 Color kSurface = _light.surface;
@@ -116,9 +174,12 @@ Color kFaint = _light.faint;
 Color kPlaceholder = _light.placeholder;
 Color kCommon = _light.common;
 
-void applyPalette(bool dark) {
-  final p = dark ? _dark : _light;
+void applyPalette(bool dark, {bool newYear = false}) {
+  final p = newYear ? (dark ? _nyDark : _nyLight) : (dark ? _dark : _light);
   kDark = dark;
+  kNewYear = newYear;
+  kAccent = p.accent;
+  kAccentDeep = p.accentDeep;
   kBg = p.bg;
   kBgTop = p.bgTop;
   kSurface = p.surface;
@@ -308,9 +369,7 @@ ThemeData buildTheme() {
       ),
       trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
     ),
-    progressIndicatorTheme: const ProgressIndicatorThemeData(
-      color: kAccentDeep,
-    ),
+    progressIndicatorTheme: ProgressIndicatorThemeData(color: kAccentDeep),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: kSurface,
@@ -326,7 +385,7 @@ ThemeData buildTheme() {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(22),
-        borderSide: const BorderSide(color: kAccentDeep, width: 1.6),
+        borderSide: BorderSide(color: kAccentDeep, width: 1.6),
       ),
     ),
     dividerColor: kLine,

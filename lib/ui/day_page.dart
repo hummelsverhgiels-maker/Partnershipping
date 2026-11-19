@@ -195,7 +195,7 @@ class DayPage extends StatelessWidget {
                 color: kSurface.withValues(alpha: 0.75),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Text(
+              child: Text(
                 'Сегодня',
                 style: TextStyle(
                   fontWeight: FontWeight.w800,
