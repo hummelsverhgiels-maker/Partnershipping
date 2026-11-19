@@ -5,7 +5,7 @@ import 'budget_page.dart';
 import 'common.dart';
 import 'docs_page.dart';
 import 'backup_page.dart';
-import 'dog_extras.dart';
+import 'dog_extras.dart' show DogPosesPage;
 import 'together_pages.dart';
 import 'earnings_page.dart';
 import 'important_page.dart';
@@ -109,18 +109,6 @@ class MorePage extends StatelessWidget {
             'Поза дня',
             'Как спит Оливка, и лучшая поза месяца',
             DogPosesPage(store: store),
-          ),
-          item(
-            '🎬',
-            'Видео-альбом',
-            'Смешные и милые видео Оливки',
-            DogVideosPage(store: store),
-          ),
-          item(
-            '📒',
-            'Заметки об Оливке',
-            'Команды, любимое, чего боится',
-            DogNotesPage(store: store),
           ),
           const SectionTitle('ВМЕСТЕ'),
           item(

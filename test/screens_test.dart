@@ -341,19 +341,6 @@ void main() {
         await moreItem('Поза дня');
         expect(find.textContaining('Снимайте'), findsOneWidget);
         await back();
-        await moreItem('Видео-альбом');
-        expect(find.textContaining('видео Оливки'), findsOneWidget);
-        await back();
-        await moreItem('Заметки об Оливке');
-        store.upsert('dognote', {
-          'cat': 'cmd',
-          'title': 'Дай лапу',
-          'text': 'Учим',
-          'ts': 1,
-        });
-        await _settle(tester);
-        expect(find.text('Дай лапу'), findsOneWidget);
-        await back();
         await moreItem('Банка благодарностей');
         store.upsert('thanks', {
           'title': 'ужин',

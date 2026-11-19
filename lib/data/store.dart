@@ -495,7 +495,6 @@ class AppStore extends ChangeNotifier {
       case 'event':
         return 'event';
       case 'pose':
-      case 'dogvideo':
         return 'feed';
     }
     return null;
